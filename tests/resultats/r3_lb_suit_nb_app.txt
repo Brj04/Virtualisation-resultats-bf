@@ -1,0 +1,12 @@
+==> lb1: Running provisioner: shell...
+    lb1: Running: /tmp/vagrant-shell20261105-122940-nkm8k6.sh
+    lb1: lb : configuration mise à jour (4 serveurs app)
+    server app1 192.168.63.21:3000 check
+    server app2 192.168.63.22:3000 check
+    server app3 192.168.63.23:3000 check
+    server app4 192.168.63.24:3000 check
+==> lb1: Running provisioner: shell...
+    lb1: Running: /tmp/vagrant-shell20261105-124545-pbc8vc.sh
+    lb1: lb : configuration déjà à jour
+    server app1 192.168.63.21:3000 check
+    server app2 192.168.63.22:3000 check

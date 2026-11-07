@@ -21,7 +21,7 @@ def lire_env(chemin)
     next if l.empty? || l.start_with?('#')
     k, v = l.split('=', 2)
     next if v.nil?
-    h[k.strip] = v.strip.gsub(/\A["']|["']\z/, '')
+    h[k.strip] = v.sub(/\s+#.*\z/, '').strip.gsub(/\A["']|["']\z/, '')
   end
   h
 end

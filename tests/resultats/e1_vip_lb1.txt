@@ -1,1 +1,0 @@
-    inet 192.168.63.5/24 scope global secondary eth1

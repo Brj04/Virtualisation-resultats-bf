@@ -117,9 +117,7 @@ au seuil de 5 s. `option redispatch` et `retries 2` rejouent sur un autre serveu
 - Le répertoire de données reste dans `/var/lib/postgresql` (jamais dans un dossier synchronisé).
 - `max_connections` est identique sur primaire et réplique (condition de démarrage d'un standby).
 
-**Bascule** (`scripts/bascule.sh`, depuis l'hôte) : (1) promotion de bdd2 (`pg_ctlcluster … promote`), (2) attente de la
-sortie du mode recovery, (3) repointage de `DB_HOST` sur chaque serveur applicatif et redémarrage du service, (4) attente
-du retour de `/sante` à 200. Le script affiche sa durée.
+**Bascule** (`scripts/bascule.sh`, depuis l'hôte) : (1) vérification que bdd2 est bien une réplique, (2) arrêt de bdd1 si elle tourne encore, (3) promotion de bdd2 par `SELECT pg_promote(true, 60)` et pose d'un fichier marqueur, (4) repointage de `DB_HOST` sur chaque serveur applicatif (adresses lues dans `config/noeuds.yml`) et redémarrage du service. Le script affiche sa durée. Il n'y a pas de bascule retour automatique.
 
 ### 4.5 Secrets (R7)
 
@@ -166,7 +164,7 @@ repointerait sur bdd1). Pour réintégrer l'ancien primaire, le reconstruire com
 
 **Reconstruire.** `vagrant destroy -f && vagrant up` (rejouable sur n'importe quel poste).
 
-**Activer une extension.** Mettre `AVEC_LB2=1` ou `AVEC_OBS=1` dans `.env`, puis `vagrant up` (E2 : puis
+**Activer une extension.** Mettre `WITH_LB2=1` ou `WITH_OBS=1` dans `.env`, puis `vagrant up` (E2 : puis
 `vagrant provision` pour installer node_exporter sur les VM existantes).
 
 ## 7. Résultats des scénarios de validation
@@ -207,7 +205,7 @@ le goulot peut être la base ou HAProxy plutôt que les applications ; ce n'est 
 
 ### V4 — Panne de la base primaire
 
-| Commande | `./tests/v4_panne_base.sh` |
+| Commande | `./tests/v4_panne_bdd.sh` |
 |---|---|
 | Fichier source | |
 | Délai avant `/sante` = 503 | … s |
@@ -267,7 +265,7 @@ Voir le `README.md` du dépôt : `git clone`, `cp .env.exemple .env`, `vagrant u
 
 | Membre | Rôle | Périmètre |
 |---|---|---|
-| | Architecte réseau et répartition | Plan d'adressage, Vagrantfile, HAProxy, sonde, E1 |
-| | Ingénieur applicatif | Service HTTP, absence d'état, gestion des erreurs de base, E4 |
-| | Ingénieur données | PostgreSQL, jeu de données, réplication, bascule, E3 |
-| | Ingénieur essais et observabilité | Scénarios V1–V6, mesures, E2, rédaction des résultats |
+| BASSOLÉ René Junior | Architecte réseau et répartition | Plan d'adressage, Vagrantfile, HAProxy, sonde, E1 |
+| BELEM | Ingénieur applicatif | Service HTTP, absence d'état, gestion des erreurs de base, E4 |
+| YARO Laurentine | Ingénieur données | PostgreSQL, jeu de données, réplication, bascule, E3 |
+| ZONGO Roukia | Ingénieur essais et observabilité | Scénarios V1–V6, mesures, E2, rédaction des résultats |

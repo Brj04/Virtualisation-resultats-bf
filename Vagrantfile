@@ -68,7 +68,7 @@ if !File.exist?(NOEUDS_YML) || File.read(NOEUDS_YML) != contenu
 end
 
 # Secrets : transmis aux machines par variables d'environnement, jamais écrits dans le dépôt.
-SECRETS = %w[POSTGRES_PASSWORD REPLICATION_PASSWORD APP_DB_PASSWORD GRAFANA_PASSWORD]
+SECRETS = %w[POSTGRES_PASSWORD REPLICATION_PASSWORD APP_DB_PASSWORD GRAFANA_PASSWORD DB_HOSTS]
           .each_with_object({}) { |k, h| h[k] = val(k, '') }
 
 Vagrant.configure('2') do |config|
@@ -95,15 +95,73 @@ Vagrant.configure('2') do |config|
       end
 
       script = File.join(__dir__, 'scripts', "#{n['role']}.sh")
-      if File.exist?(script)
-        env = SECRETS.merge(
-          'NOM' => n['nom'], 'IP' => n['ip'], 'ROLE' => n['role'],
-          'RESEAU' => RESEAU, 'GROUPE' => GROUPE.to_s
+
+      # Arrêter Vagrant si le script d'un rôle est absent.
+      abort "Script de provisionnement introuvable : #{script}" unless
+        File.file?(script)
+
+      env = SECRETS.merge(
+  'NOM' => n['nom'], 'IP' => n['ip'], 'ROLE' => n['role'],
+  'RESEAU' => RESEAU, 'GROUPE' => GROUPE.to_s
+)
+
+if n['role'] == 'app'
+  env['DB_HOSTS'] = val('DB_HOSTS', "#{RESEAU}.31,#{RESEAU}.32")
+end
+
+      # Le répartiteur suit NB_APP : on le reprovisionne à chaque "vagrant up".
+      m.vm.provision 'shell', path: script, env: env,
+                     run: (n['role'] == 'lb' ? 'always' : 'once')
+      # Extension E1 : haute disponibilité des load balancers.
+      # Keepalived est configuré uniquement si lb2 est activé.
+      if WITH_LB2 && n['role'] == 'lb'
+        if n['nom'] == 'lb1'
+          peer_ip = "#{RESEAU}.12"
+          vrrp_state = 'MASTER'
+          vrrp_priority = '150'
+        else
+          peer_ip = "#{RESEAU}.11"
+          vrrp_state = 'BACKUP'
+          vrrp_priority = '100'
+        end
+
+        keepalived_script = File.join(
+          __dir__, 'scripts', 'keepalived.sh'
         )
-        # Le répartiteur suit NB_APP : on le reprovisionne à chaque "vagrant up".
-        m.vm.provision 'shell', path: script, env: env,
-                       run: (n['role'] == 'lb' ? 'always' : 'once')
+
+        abort "Script Keepalived introuvable : #{keepalived_script}" unless
+          File.exist?(keepalived_script)
+
+        keepalived_env = {
+          'NOM' => n['nom'],
+          'IP' => n['ip'],
+          'RESEAU' => RESEAU,
+          'VIP' => "#{RESEAU}.5",
+          'PEER_IP' => peer_ip,
+          'VRID' => (55 + GROUPE).to_s,
+          'VRRP_STATE' => vrrp_state,
+          'VRRP_PRIORITY' => vrrp_priority
+        }
+
+        # Exécuté après lb.sh, à chaque provisionnement.
+        m.vm.provision 'shell',
+                       path: keepalived_script,
+                       env: keepalived_env,
+                       run: 'always'
       end
+
+      # Extension E2 : agent de supervision sur chaque machine.
+      node_exporter_script = File.join(
+        __dir__, 'scripts', 'node-exporter.sh'
+      )
+
+      abort "Script node_exporter introuvable : #{node_exporter_script}" unless
+        File.file?(node_exporter_script)
+
+      m.vm.provision 'shell',
+                     path: node_exporter_script,
+                     env: env,
+                     run: 'once'
     end
   end
 end

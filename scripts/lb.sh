@@ -6,6 +6,7 @@ export DEBIAN_FRONTEND=noninteractive
 NOEUDS=/vagrant/config/noeuds.yml
 TPL=/vagrant/config/haproxy.cfg.tpl
 CIBLE=/etc/haproxy/haproxy.cfg
+: "${IP:?Variable IP absente}"
 
 if ! command -v haproxy >/dev/null 2>&1; then
   apt-get update -qq
@@ -16,10 +17,18 @@ SRV=$(mktemp); NOUVEAU=$(mktemp)
 trap 'rm -f "$SRV" "$NOUVEAU"' EXIT
 
 # Une ligne "server" par machine de rôle app, lue dans noeuds.yml.
-awk '/^- nom:/{nom=$3} /^  ip:/{ip=$2} /^  role:/{ if ($2=="app") printf "    server %s %s:3000 check\n", nom, ip }' "$NOEUDS" > "$SRV"
-[ -s "$SRV" ] || { echo "ERREUR : aucun serveur app dans $NOEUDS" >&2; exit 1; }
-
-sed -e "/__SERVEURS__/{r $SRV" -e "d}" "$TPL" > "$NOUVEAU"
+awk '
+{
+  gsub(/\r/, "")
+  if ($1 == "-") nom=$3
+  if ($1 == "ip:") ip=$2
+  if ($1 == "role:" && $2=="app") {
+    printf "    server %s %s:3000 check\n", nom, ip
+  }
+}
+' "$NOEUDS" > "$SRV"
+sed -e "/__SERVEURS__/{r $SRV" -e "d}" \
+    -e "s/__IP__/${IP}/g" "$TPL" > "$NOUVEAU"
 haproxy -c -f "$NOUVEAU" >/dev/null
 
 systemctl enable haproxy >/dev/null 2>&1

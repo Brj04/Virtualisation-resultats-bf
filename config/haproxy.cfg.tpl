@@ -1,3 +1,4 @@
+
 global
     log /dev/log local0
     maxconn 4096
@@ -33,3 +34,10 @@ listen stats
     stats enable
     stats uri /stats
     stats refresh 5s
+
+# Extension E2 : métriques Prometheus de HAProxy.
+frontend prometheus
+    bind __IP__:8405
+    mode http
+    http-request use-service prometheus-exporter if { path /metrics }
+    no log

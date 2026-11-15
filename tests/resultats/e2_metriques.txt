@@ -1,0 +1,17 @@
+dim. 15 nov. 2026 10:05:09 GMT
+--- metriques HAProxy (port 8405)
+# HELP haproxy_process_nbthread Number of started threads (global.nbthread)
+# TYPE haproxy_process_nbthread gauge
+haproxy_process_nbthread 1
+# HELP haproxy_process_nbproc Number of started worker processes (historical, always 1)
+# TYPE haproxy_process_nbproc gauge
+--- cibles Prometheus (job, nom, etat)
+haproxy lb1 up
+node app1 down
+node app2 down
+node lb1 up
+node obs up
+node bdd1 down
+node bdd2 down
+--- Grafana /login (code HTTP)
+200

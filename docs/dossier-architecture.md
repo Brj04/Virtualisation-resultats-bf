@@ -265,7 +265,7 @@ Voir le `README.md` du dépôt : `git clone`, `cp .env.exemple .env`, `vagrant u
 
 | Membre | Rôle | Périmètre |
 |---|---|---|
-| BASSOLÉ René Junior | Architecte réseau et répartition | Plan d'adressage, Vagrantfile, HAProxy, sonde, E1 |
+| BASSOLÉ René Junior | Architecte réseau et répartition | Plan d'adressage, Vagrantfile, HAProxy, sonde, E1, E2 |
 | BELEM | Ingénieur applicatif | Service HTTP, absence d'état, gestion des erreurs de base, E4 |
 | YARO Laurentine | Ingénieur données | PostgreSQL, jeu de données, réplication, bascule, E3 |
-| ZONGO Roukia | Ingénieur essais et observabilité | Scénarios V1–V6, mesures, E2, rédaction des résultats |
+| ZONGO Roukia | Ingénieur essais et observabilité | Scénarios V1–V6, mesures, rédaction des résultats |

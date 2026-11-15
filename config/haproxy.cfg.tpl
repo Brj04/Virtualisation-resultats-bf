@@ -33,3 +33,8 @@ listen stats
     stats enable
     stats uri /stats
     stats refresh 5s
+
+frontend metriques
+    bind *:8405
+    http-request use-service prometheus-exporter if { path /metrics }
+    no log

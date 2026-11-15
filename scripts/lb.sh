@@ -93,3 +93,9 @@ CONF
   fi
   rm -f "$KA"
 fi
+
+# ---- E2 : node_exporter si la supervision est activée (une machine "obs" existe) ----
+if grep -q '^- nom: obs$' "$NOEUDS"; then
+  apt-get install -y -qq prometheus-node-exporter >/dev/null
+  systemctl enable --now prometheus-node-exporter >/dev/null 2>&1
+fi

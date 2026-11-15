@@ -1,0 +1,34 @@
+{
+  "uid": "resultats-bf",
+  "title": "RÉSULTATS-BF — charge et pannes",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "Débit au répartiteur (requêtes/s)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prom" },
+      "targets": [ { "refId": "A", "expr": "sum(rate(haproxy_frontend_http_requests_total{proxy=\"entree\"}[15s]))", "legendFormat": "req/s" } ]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Serveurs applicatifs actifs (vus par HAProxy)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prom" },
+      "targets": [ { "refId": "A", "expr": "max(haproxy_backend_active_servers{proxy=\"apps\"})", "legendFormat": "serveurs actifs" } ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Machines joignables (1 = en ligne)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prom" },
+      "targets": [ { "refId": "A", "expr": "up{job=\"node\"}", "legendFormat": "{{nom}}" } ]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Utilisation CPU (%)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prom" },
+      "targets": [ { "refId": "A", "expr": "100 - avg by (nom) (rate(node_cpu_seconds_total{mode=\"idle\"}[15s])) * 100", "legendFormat": "{{nom}}" } ]
+    }
+  ]
+}

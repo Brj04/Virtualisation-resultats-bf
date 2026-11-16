@@ -245,7 +245,8 @@ Joindre deux captures Grafana : (1) le débit qui monte pendant la charge V3 ; (
 - **Pas de TLS** entre les composants, ni de pare-feu hôte (réseau privé de laboratoire).
 - Mots de passe transmis par variables d'environnement, visibles dans la VM (fichier à droits restreints) : acceptable ici,
   à remplacer par un coffre-fort de secrets en production.
-- Résultat statique : la table `resultats` est en lecture seule pour l'application. -_Service applicatif_ : au plus 30 requêtes simultanées vers la base, les suivantes attendent ; aucun cache, chaque demande interroge la bas
+- Résultat statique : la table `resultats` est en lecture seule pour l'application.
+- **Service applicatif** : au plus 30 requêtes simultanées vers la base, les suivantes attendent ; aucun cache, chaque demande interroge la base.
 - _(Ajoutez ici les limites réellement rencontrées pendant vos essais.)_
 
 ## 9. Ce que nous ferions autrement

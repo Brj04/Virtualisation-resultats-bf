@@ -1,7 +1,7 @@
 # Dossier d'architecture — Plateforme RÉSULTATS-BF
 
 Master 2 Informatique — Module DevOps et infrastructures reproductibles
-Groupe n° 8 
+Groupe n° 8
 
 > **À lire avant de rendre** : ce document est un **brouillon structuré**. Les sections 1 à 6 décrivent
 > l'architecture livrée dans le dépôt. La section 7 (résultats) doit être remplie **uniquement avec vos mesures réelles**
@@ -25,14 +25,14 @@ poste, sans geste manuel (`vagrant destroy -f` puis `vagrant up`). Le cadre est 
 
 ## 2. De l'exigence au choix d'architecture
 
-| Exigence | Choix d'architecture | Justification |
-|---|---|---|
-| Résilience applicative | N ≥ 2 serveurs applicatifs derrière un répartiteur HAProxy avec sonde `/sante` | Un serveur défaillant est écarté automatiquement en quelques secondes ; le trafic continue vers les autres |
-| Résilience des données | Réplique PostgreSQL en flux (bdd2) + procédure de bascule scriptée | Une copie à jour de la base existe en permanence et peut être promue |
-| Résilience du répartiteur (E1) | lb2 + keepalived, IP virtuelle VRRP | Supprime le point de défaillance unique du répartiteur |
-| Scalabilité | Applications **sans état**, `NB_APP` paramétrable, configuration du répartiteur engendrée | Ajouter un serveur = changer une valeur ; le retirer est indolore car aucun état n'y vit |
-| Reproductibilité | Vagrantfile + scripts idempotents, `.env.exemple`, `noeuds.yml` engendré | Une infrastructure qui ne se reconstruit pas est un objet fragile que personne n'ose toucher |
-| Observabilité (E2) | Prometheus + node_exporter + Grafana | « Mesurer plutôt qu'affirmer » : débit et pannes visibles sur un tableau de bord |
+| Exigence                       | Choix d'architecture                                                                      | Justification                                                                                              |
+| ------------------------------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Résilience applicative         | N ≥ 2 serveurs applicatifs derrière un répartiteur HAProxy avec sonde `/sante`            | Un serveur défaillant est écarté automatiquement en quelques secondes ; le trafic continue vers les autres |
+| Résilience des données         | Réplique PostgreSQL en flux (bdd2) + procédure de bascule scriptée                        | Une copie à jour de la base existe en permanence et peut être promue                                       |
+| Résilience du répartiteur (E1) | lb2 + keepalived, IP virtuelle VRRP                                                       | Supprime le point de défaillance unique du répartiteur                                                     |
+| Scalabilité                    | Applications **sans état**, `NB_APP` paramétrable, configuration du répartiteur engendrée | Ajouter un serveur = changer une valeur ; le retirer est indolore car aucun état n'y vit                   |
+| Reproductibilité               | Vagrantfile + scripts idempotents, `.env.exemple`, `noeuds.yml` engendré                  | Une infrastructure qui ne se reconstruit pas est un objet fragile que personne n'ose toucher               |
+| Observabilité (E2)             | Prometheus + node_exporter + Grafana                                                      | « Mesurer plutôt qu'affirmer » : débit et pannes visibles sur un tableau de bord                           |
 
 ## 3. Architecture
 
@@ -50,19 +50,19 @@ flowchart LR
   OBS["obs — Prometheus + Grafana<br/>.41 (E2)"] -.->|"métriques"| LB1
 ```
 
-*(Remplacez ou complétez ce schéma par l'image produite par l'architecte : plan d'adressage, ports et flux.)*
+_(Remplacez ou complétez ce schéma par l'image produite par l'architecte : plan d'adressage, ports et flux.)_
 
 ### 3.1 Inventaire des machines (X = 55 + numéro de groupe)
 
-| Machine | Rôle | Adresse | RAM | Statut |
-|---|---|---|---|---|
-| bdd1 | PostgreSQL primaire (lecture/écriture) | 192.168.X.31 | 768 Mo | Obligatoire |
-| bdd2 | Réplique en flux, promouvable | 192.168.X.32 | 768 Mo | Obligatoire |
-| app1 … appN | Serveurs applicatifs sans état (N ≥ 2) | 192.168.X.21 … .2N | 512 Mo | Obligatoire |
-| lb1 | Répartiteur actif (HAProxy) | 192.168.X.11 | 512 Mo | Obligatoire |
-| lb2 | Répartiteur passif (keepalived) | 192.168.X.12 | 512 Mo | Extension E1 |
-| obs | Supervision | 192.168.X.41 | 768 Mo | Extension E2 |
-| (virtuelle) | IP virtuelle VRRP | 192.168.X.5 | — | Extension E1 |
+| Machine     | Rôle                                   | Adresse            | RAM    | Statut       |
+| ----------- | -------------------------------------- | ------------------ | ------ | ------------ |
+| bdd1        | PostgreSQL primaire (lecture/écriture) | 192.168.X.31       | 768 Mo | Obligatoire  |
+| bdd2        | Réplique en flux, promouvable          | 192.168.X.32       | 768 Mo | Obligatoire  |
+| app1 … appN | Serveurs applicatifs sans état (N ≥ 2) | 192.168.X.21 … .2N | 512 Mo | Obligatoire  |
+| lb1         | Répartiteur actif (HAProxy)            | 192.168.X.11       | 512 Mo | Obligatoire  |
+| lb2         | Répartiteur passif (keepalived)        | 192.168.X.12       | 512 Mo | Extension E1 |
+| obs         | Supervision                            | 192.168.X.41       | 768 Mo | Extension E2 |
+| (virtuelle) | IP virtuelle VRRP                      | 192.168.X.5        | —      | Extension E1 |
 
 Socle : 5 VM, 3 072 Mo. Avec E1 + E2 : 4 352 Mo (extensions déployées une par une pendant le développement).
 
@@ -90,11 +90,11 @@ de serveur applicatif n'est écrite en dur. Passer de 2 à 4 serveurs : `NB_APP=
 
 Service HTTP en Python (< 100 lignes), trois points d'entrée :
 
-| Route | Comportement |
-|---|---|
+| Route                       | Comportement                                                               |
+| --------------------------- | -------------------------------------------------------------------------- |
 | `GET /resultat?matricule=…` | Résultat JSON lu dans la base ; 400 si le paramètre manque, 404 si inconnu |
-| `GET /sante` | 200 si `SELECT 1` réussit, 503 sinon — jamais 200 « par principe » |
-| `GET /info` | Nom d'hôte du serveur qui répond (observer la répartition) |
+| `GET /sante`                | 200 si `SELECT 1` réussit, 503 sinon — jamais 200 « par principe »         |
+| `GET /info`                 | Nom d'hôte du serveur qui répond (observer la répartition)                 |
 
 L'application ne conserve ni session, ni fichier local, ni compteur : tout l'état vit dans PostgreSQL. Elle démarre même si
 la base est absente (connexion créée à la demande) et répond alors 503 proprement. Les connexions ont des délais bornés
@@ -143,14 +143,14 @@ répartiteur, le nombre de serveurs applicatifs actifs, les machines joignables 
 
 ## 5. Points de défaillance uniques
 
-| Composant | Risque | Traitement | Reste-t-il un risque ? |
-|---|---|---|---|
-| Serveur applicatif | Panne d'un serveur | N ≥ 2, sonde `/sante` | Non tant qu'il reste un serveur sain |
-| Répartiteur | Panne de lb1 | E1 : lb2 + VRRP | Non avec E1 ; **oui** sans E1 |
-| Base primaire | Panne de bdd1 | Réplique + bascule | **Oui** : bascule déclenchée à la main, pertes possibles des dernières écritures (réplication asynchrone) |
-| Réplique | Panne de bdd2 | — | Perte de la redondance uniquement |
-| Supervision | Panne de obs | — | Perte de la visibilité, pas du service |
-| Poste hôte | Panne de la machine physique | — | **Oui** : toutes les VM partagent un seul poste (limite de l'exercice) |
+| Composant          | Risque                       | Traitement            | Reste-t-il un risque ?                                                                                    |
+| ------------------ | ---------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------- |
+| Serveur applicatif | Panne d'un serveur           | N ≥ 2, sonde `/sante` | Non tant qu'il reste un serveur sain                                                                      |
+| Répartiteur        | Panne de lb1                 | E1 : lb2 + VRRP       | Non avec E1 ; **oui** sans E1                                                                             |
+| Base primaire      | Panne de bdd1                | Réplique + bascule    | **Oui** : bascule déclenchée à la main, pertes possibles des dernières écritures (réplication asynchrone) |
+| Réplique           | Panne de bdd2                | —                     | Perte de la redondance uniquement                                                                         |
+| Supervision        | Panne de obs                 | —                     | Perte de la visibilité, pas du service                                                                    |
+| Poste hôte         | Panne de la machine physique | —                     | **Oui** : toutes les VM partagent un seul poste (limite de l'exercice)                                    |
 
 ## 6. Procédures d'exploitation
 
@@ -176,28 +176,28 @@ repointerait sur bdd1). Pour réintégrer l'ancien primaire, le reconstruire com
 
 ### V1 — Répartition
 
-| Commande | `./tests/v1_repartition.sh` |
-|---|---|
-| Fichier source | |
-| Appels par serveur | app1 : … / app2 : … |
-| Écart max-min (objectif < 20 %) | … % |
-| Commentaire | |
+| Commande                        | `./tests/v1_repartition.sh` |
+| ------------------------------- | --------------------------- |
+| Fichier source                  |                             |
+| Appels par serveur              | app1 : … / app2 : …         |
+| Écart max-min (objectif < 20 %) | … %                         |
+| Commentaire                     |                             |
 
 ### V2 — Panne d'un serveur applicatif
 
-| Commande | `./tests/v2_panne_app.sh` (`vagrant halt app1` pendant 50 s de charge) |
-|---|---|
-| Fichier source | |
-| Requêtes envoyées / perdues | … / … |
-| Période dégradée | … s (objectif : plus aucune erreur au-delà de 5 s) |
-| Commentaire | |
+| Commande                    | `./tests/v2_panne_app.sh` (`vagrant halt app1` pendant 50 s de charge) |
+| --------------------------- | ---------------------------------------------------------------------- |
+| Fichier source              |                                                                        |
+| Requêtes envoyées / perdues | … / …                                                                  |
+| Période dégradée            | … s (objectif : plus aucune erreur au-delà de 5 s)                     |
+| Commentaire                 |                                                                        |
 
 ### V3 — Montée en charge
 
-| Configuration | Commande | Requêtes/s | Requêtes en échec | Fichier source |
-|---|---|---|---|---|
-| N = 2 | `./tests/v3_charge.sh` | … | … | |
-| N = 4 | `NB_APP=4 vagrant up` puis idem | … | … | |
+| Configuration | Commande                        | Requêtes/s | Requêtes en échec | Fichier source |
+| ------------- | ------------------------------- | ---------- | ----------------- | -------------- |
+| N = 2         | `./tests/v3_charge.sh`          | …          | …                 |                |
+| N = 4         | `NB_APP=4 vagrant up` puis idem | …          | …                 |                |
 
 Commentaire — **à rédiger d'après vos chiffres**. Éléments à discuter : les 4 à 6 VM se partagent le processeur d'un seul
 ordinateur (chaque VM a 1 vCPU), donc doubler les serveurs applicatifs ne double pas le débit et il peut même baisser ;
@@ -205,31 +205,31 @@ le goulot peut être la base ou HAProxy plutôt que les applications ; ce n'est 
 
 ### V4 — Panne de la base primaire
 
-| Commande | `./tests/v4_panne_bdd.sh` |
-|---|---|
-| Fichier source | |
-| Délai avant `/sante` = 503 | … s |
-| Comportement observé pendant la panne | 503 propre / autre : … |
-| Durée de la bascule (`bascule.sh`) | … s |
-| Durée totale depuis l'arrêt de bdd1 | … s |
-| Commentaire | |
+| Commande                              | `./tests/v4_panne_bdd.sh` |
+| ------------------------------------- | ------------------------- |
+| Fichier source                        |                           |
+| Délai avant `/sante` = 503            | … s                       |
+| Comportement observé pendant la panne | 503 propre / autre : …    |
+| Durée de la bascule (`bascule.sh`)    | … s                       |
+| Durée totale depuis l'arrêt de bdd1   | … s                       |
+| Commentaire                           |                           |
 
 ### V5 — Reconstruction
 
-| Commande | `./tests/v5_reconstruction.sh` |
-|---|---|
-| Fichier source | |
-| Durée totale | … min … s |
-| Intervention manuelle nécessaire ? | non / oui : … |
+| Commande                           | `./tests/v5_reconstruction.sh` |
+| ---------------------------------- | ------------------------------ |
+| Fichier source                     |                                |
+| Durée totale                       | … min … s                      |
+| Intervention manuelle nécessaire ? | non / oui : …                  |
 
 ### V6 — Panne du répartiteur (E1)
 
-| Commande | `./tests/v6_panne_lb.sh` (`vagrant halt lb1`, charge sur l'IP virtuelle) |
-|---|---|
-| Fichier source | |
-| Temps de reprise après bascule VRRP | … s (objectif < 5 s) |
-| Requêtes perdues | … |
-| Commentaire | |
+| Commande                            | `./tests/v6_panne_lb.sh` (`vagrant halt lb1`, charge sur l'IP virtuelle) |
+| ----------------------------------- | ------------------------------------------------------------------------ |
+| Fichier source                      |                                                                          |
+| Temps de reprise après bascule VRRP | … s (objectif < 5 s)                                                     |
+| Requêtes perdues                    | …                                                                        |
+| Commentaire                         |                                                                          |
 
 ### Tableau de bord (E2)
 
@@ -245,8 +245,8 @@ Joindre deux captures Grafana : (1) le débit qui monte pendant la charge V3 ; (
 - **Pas de TLS** entre les composants, ni de pare-feu hôte (réseau privé de laboratoire).
 - Mots de passe transmis par variables d'environnement, visibles dans la VM (fichier à droits restreints) : acceptable ici,
   à remplacer par un coffre-fort de secrets en production.
-- Résultat statique : la table `resultats` est en lecture seule pour l'application.
-- *(Ajoutez ici les limites réellement rencontrées pendant vos essais.)*
+- Résultat statique : la table `resultats` est en lecture seule pour l'application. -_Service applicatif_ : au plus 30 requêtes simultanées vers la base, les suivantes attendent ; aucun cache, chaque demande interroge la bas
+- _(Ajoutez ici les limites réellement rencontrées pendant vos essais.)_
 
 ## 9. Ce que nous ferions autrement
 
@@ -255,7 +255,7 @@ Joindre deux captures Grafana : (1) le débit qui monte pendant la charge V3 ; (
 - Mettre un cache (E3) devant la base pour les consultations répétées et discuter l'invalidation.
 - Déploiement sans coupure (E4) : sortir un serveur de HAProxy, le mettre à jour, le réintégrer, serveur par serveur.
 - Tests automatisés en intégration continue (reconstruction hebdomadaire).
-- *(Complétez avec votre retour d'expérience.)*
+- _(Complétez avec votre retour d'expérience.)_
 
 ## 10. Reproduire la plateforme
 
@@ -263,9 +263,9 @@ Voir le `README.md` du dépôt : `git clone`, `cp .env.exemple .env`, `vagrant u
 
 ## Annexe — Organisation de l'équipe
 
-| Membre | Rôle | Périmètre |
-|---|---|---|
-| BASSOLÉ René Junior | Architecte réseau et répartition | Plan d'adressage, Vagrantfile, HAProxy, sonde, E1, E2 |
-| BELEM | Ingénieur applicatif | Service HTTP, absence d'état, gestion des erreurs de base, E4 |
-| YARO Laurentine | Ingénieur données | PostgreSQL, jeu de données, réplication, bascule, E3 |
-| ZONGO Roukia | Ingénieur essais et observabilité | Scénarios V1–V6, mesures, rédaction des résultats |
+| Membre              | Rôle                              | Périmètre                                                     |
+| ------------------- | --------------------------------- | ------------------------------------------------------------- |
+| BASSOLÉ René Junior | Architecte réseau et répartition  | Plan d'adressage, Vagrantfile, HAProxy, sonde, E1, E2         |
+| BELEM               | Ingénieur applicatif              | Service HTTP, absence d'état, gestion des erreurs de base, E4 |
+| YARO Laurentine     | Ingénieur données                 | PostgreSQL, jeu de données, réplication, bascule, E3          |
+| ZONGO Roukia        | Ingénieur essais et observabilité | Scénarios V1–V6, mesures, rédaction des résultats             |

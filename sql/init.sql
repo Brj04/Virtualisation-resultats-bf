@@ -1,4 +1,3 @@
-
 -- =========================================================
 -- PROJET : RESULTATS-BF
 -- MEMBRE 3 : INGENIEUR DONNEES
@@ -15,14 +14,18 @@ CREATE TABLE IF NOT EXISTS resultats (
     admis BOOLEAN NOT NULL
 );
 
--- Génération de 50 000 candidats fictifs.
--- Les matricules vont de BF000001 à BF050000.
--- Les doublons sont ignorés lors des réexécutions.
+-- Autoriser l'application a consulter les resultats.
+GRANT SELECT ON resultats TO resultats_app;
+
+-- Generation deterministe de 50 000 candidats fictifs.
+-- Les matricules vont de BF000001 a BF050000.
+-- Les moyennes restent identiques apres chaque reconstruction.
+-- Les doublons sont ignores lors des reexecutions.
 
 WITH candidats AS (
     SELECT
         numero,
-        ROUND((5 + RANDOM() * 15)::NUMERIC, 2) AS moyenne
+        ROUND((((numero * 7919) % 1501) / 100.0 + 5)::NUMERIC, 2) AS moyenne
     FROM GENERATE_SERIES(1, 50000) AS numeros(numero)
 )
 INSERT INTO resultats (
@@ -45,6 +48,6 @@ SELECT
 FROM candidats
 ON CONFLICT (matricule) DO NOTHING;
 
--- Vérification du nombre total de résultats.
+-- Verification du nombre total de resultats.
 SELECT COUNT(*) AS nombre_total_resultats
 FROM resultats;

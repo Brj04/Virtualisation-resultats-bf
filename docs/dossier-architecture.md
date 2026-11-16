@@ -75,16 +75,52 @@ ne sont accessibles que depuis le réseau privé.
 
 ## 4. Description des composants
 
-### 4.1 Vagrantfile et source unique de vérité (R1, R3)
+#### 4.1 Vagrantfile et source unique de vérité (R1, R3)
 
-Le Vagrantfile construit une table `NOEUDS` (nom, adresse, mémoire, rôle) à partir de `GROUPE`, `NB_APP` et des
-drapeaux d'extension. Cette table :
+Le `Vagrantfile` est la recette de toute la plateforme. Il ne contient aucune liste de machines écrite à la main : il
+construit une table `NOEUDS` (nom, adresse, rôle, mémoire) à partir de quelques réglages, puis s'en sert pour deux
+choses :
 
-1. définit les machines virtuelles ;
-2. est écrite dans `config/noeuds.yml`, lu par tous les scripts de provisionnement.
+1. définir les machines virtuelles ;
+2. écrire cette même table dans `config/noeuds.yml`, que tous les scripts de provisionnement relisent.
 
-La configuration de HAProxy, de keepalived et de Prometheus est donc **engendrée** depuis la même table : aucune adresse
-de serveur applicatif n'est écrite en dur. Passer de 2 à 4 serveurs : `NB_APP=4 vagrant up`.
+**Réglages.** Ils sont lus dans `.env` (copié depuis `.env.exemple` au premier lancement). Une variable exportée dans le
+terminal l'emporte sur `.env`.
+
+| Réglage     | Valeur admise | Effet                                                              |
+| ----------- | ------------- | ------------------------------------------------------------------ |
+| `GROUPE`    | 1 à 8         | Réseau privé `192.168.(55 + GROUPE).0/24` ; notre groupe : 8 → `192.168.63.0/24` |
+| `NB_APP`    | 2 à 9         | Nombre de serveurs applicatifs `app1` … `appN`                      |
+| `PORT_HOTE` | un port libre | Port du poste hôte redirigé vers `lb1` (défaut 8080)                |
+| `WITH_LB2`  | 0 ou 1        | 1 : ajoute `lb2` et l'IP virtuelle (extension E1)                   |
+| `WITH_OBS`  | 0 ou 1        | 1 : ajoute `obs` (extension E2)                                     |
+
+Le Vagrantfile s'arrête avec un message si `GROUPE` ou `NB_APP` sortent de leur intervalle.
+
+**Table des machines.** `bdd1` (`.31`, rôle `bdd`) et `bdd2` (`.32`, rôle `replique`) sont toujours présentes, ainsi que
+`lb1` (`.11`). Les serveurs applicatifs reçoivent les adresses `.21`, `.22`, … ; `lb2` (`.12`) et `obs` (`.41`)
+n'apparaissent que si leur drapeau est à 1. Le rôle d'une machine désigne le script exécuté à son démarrage :
+`scripts/<rôle>.sh`.
+
+**Fichier engendré.** `config/noeuds.yml` contient le groupe, le réseau, l'IP virtuelle (`.5`), l'indicateur `avec_lb2` et
+la liste des machines. Il n'est réécrit que si son contenu change. Les scripts y lisent les adresses grâce aux fonctions
+de `scripts/common.sh` (`ip_de`, `noeuds_par_role`). La configuration de HAProxy et les cibles de Prometheus sont ainsi
+**engendrées** depuis la même table : aucune adresse de serveur applicatif n'est écrite en dur dans ces fichiers.
+
+Passer de 2 à 4 serveurs applicatifs : `NB_APP=4 vagrant up`. Le provisionnement de `lb1` est déclaré `run: 'always'` ;
+il est donc rejoué à chaque `vagrant up` et le répartiteur suit `NB_APP`. Les autres machines ne sont provisionnées
+qu'une fois.
+
+**Autres choix.**
+
+- Image de base `bento/ubuntu-24.04`, version `202404.26.0` figée, sans recherche de mise à jour (`box_check_update =
+  false`) : tous les membres obtiennent la même image.
+- Chaque machine a 1 processeur et une mémoire propre à son rôle (512 ou 768 Mo) ; les disques sont des clones liés
+  (`linked_clone`), plus rapides à créer.
+- Les mots de passe ne sont jamais écrits dans le dépôt : le Vagrantfile les lit dans `.env` et les transmet aux scripts
+  par variables d'environnement (voir 4.5).
+- Seule `lb1` ouvre un port vers le poste hôte (`127.0.0.1:PORT_HOTE` vers le port 80). Les autres machines ne sont
+  joignables que sur le réseau privé (voir 3.2).
 
 ### 4.2 Application (sans état)
 

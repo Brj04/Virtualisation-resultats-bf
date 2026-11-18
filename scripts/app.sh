@@ -1,67 +1,42 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
+# appN — serveur applicatif sans état
 source /vagrant/scripts/common.sh
-
-: "${DB_PASSWORD:?APP_DB_PASSWORD est absent}"
-
-DB_HOST="$(ip_de lb1)"
-[ -n "$DB_HOST" ] || { log "IP de lb1 introuvable"; exit 1; }
+: "${DB_NAME:?}" "${DB_USER:?}" "${DB_PASSWORD:?}"
 
 apt_install python3 python3-psycopg2
 
-install -d -m 755 /opt/resultats-app
+mkdir -p /opt/resultats
+ecrire_fichier /opt/resultats/serveur.py < /vagrant/app/serveur.py
 
-if ! cmp -s /vagrant/app/serveur.py /opt/resultats-app/serveur.py 2>/dev/null; then
-    install -m 644 /vagrant/app/serveur.py /opt/resultats-app/serveur.py
-    CHANGED=1
-fi
-
-# Migration de l'ancien service resultats-app vers resultats
-if [ -f /etc/systemd/system/resultats-app.service ] || [ -f /etc/resultats-app.env ]; then
-    systemctl stop resultats-app 2>/dev/null || true
-    systemctl disable resultats-app 2>/dev/null || true
-    rm -f /etc/systemd/system/resultats-app.service
-    rm -f /etc/resultats-app.env
-    systemctl daemon-reload
-fi
-
-DB_PASSWORD_B64="$(printf '%s' "$DB_PASSWORD" | base64 -w0)"
-
-ecrire_fichier /etc/resultats.env <<EOF
-DB_HOST=$DB_HOST
-DB_PORT=5432
+# DB_HOST pointe sur bdd1 ; scripts/bascule.sh le change vers bdd2 en cas de panne.
+ecrire_fichier /etc/resultats.env <<ENV
+DB_HOST=$(ip_de bdd1)
 DB_NAME=$DB_NAME
 DB_USER=$DB_USER
-DB_PASSWORD_B64=$DB_PASSWORD_B64
-EOF
-
+DB_PASSWORD=$DB_PASSWORD
+PORT=3000
+ENV
 chmod 600 /etc/resultats.env
 
 ecrire_fichier /etc/systemd/system/resultats.service <<'UNIT'
 [Unit]
-Description=Serveur applicatif RESULTATS-BF
-After=network.target
+Description=Service RESULTATS-BF
+After=network-online.target
 
 [Service]
-Type=simple
-User=www-data
-Group=www-data
 EnvironmentFile=/etc/resultats.env
-ExecStart=/usr/bin/python3 /opt/resultats-app/serveur.py
+ExecStart=/usr/bin/python3 /opt/resultats/serveur.py
 Restart=always
-RestartSec=3
+RestartSec=1
+User=nobody
 
 [Install]
 WantedBy=multi-user.target
 UNIT
 
-if [ "$CHANGED" -eq 1 ]; then
-    systemctl daemon-reload
-    systemctl enable resultats
-    systemctl restart resultats
-else
-    systemctl enable --now resultats
-fi
+systemctl daemon-reload
+systemctl enable resultats
+if [ "$CHANGED" = 1 ]; then systemctl restart resultats; else systemctl start resultats; fi
+log "service resultats actif sur le port 3000"
 
-log "Serveur applicatif operationnel sur le port 3000."
+installer_node_exporter

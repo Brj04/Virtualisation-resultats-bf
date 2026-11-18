@@ -1,59 +1,84 @@
 #!/usr/bin/env python3
-import os, json, socket, base64
+"""Service RÉSULTATS-BF — sans état : tout l'état vit dans la base."""
+import json, os, socket, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
-import psycopg2
-from contextlib import closing
+from psycopg2 import pool
 
-DB = {
-    "host": os.environ["DB_HOST"],
-    "port": int(os.getenv("DB_PORT", "5432")),
-    "dbname": os.getenv("DB_NAME", "resultats"),
-    "user": os.getenv("DB_USER", "resultats_app"),
-    "password": base64.b64decode(os.environ["DB_PASSWORD_B64"]).decode(),
-    "connect_timeout": 2
-}
+DSN = dict(host=os.environ["DB_HOST"], dbname=os.environ["DB_NAME"],
+           user=os.environ["DB_USER"], password=os.environ["DB_PASSWORD"],
+           connect_timeout=2, tcp_user_timeout=3000,
+           keepalives=1, keepalives_idle=1, keepalives_interval=1, keepalives_count=2)
+MAX = 30
+_sem, _lock, _pool = threading.BoundedSemaphore(MAX), threading.Lock(), None
 
-class Handler(BaseHTTPRequestHandler):
-    def reply(self, status, data):
-        body = json.dumps(data, ensure_ascii=False).encode()
-        self.send_response(status)
+
+def get_pool():
+    """Pool créé à la demande : l'app démarre même si la base est absente."""
+    global _pool
+    with _lock:
+        if _pool is None:
+            _pool = pool.ThreadedConnectionPool(1, MAX, **DSN)
+        return _pool
+
+
+def requete(sql, params=()):
+    """Lit la base ; lève une exception si elle est injoignable."""
+    with _sem:
+        p = get_pool()
+        conn = p.getconn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+            conn.rollback()
+            p.putconn(conn)
+            return rows
+        except Exception:
+            p.putconn(conn, close=True)
+            raise
+
+
+class Serveur(ThreadingHTTPServer):
+    request_queue_size = 128
+
+
+class H(BaseHTTPRequestHandler):
+    def reponse(self, code, obj):
+        corps = json.dumps(obj, ensure_ascii=False).encode()
+        self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Content-Length", str(len(corps)))
         self.end_headers()
-        self.wfile.write(body)
+        self.wfile.write(corps)
 
     def do_GET(self):
-        path = urlparse(self.path)
-        if path.path == "/info":
-            return self.reply(200, {"hostname": socket.gethostname()})
-        if path.path == "/sante":
-            try:
-                with closing(psycopg2.connect(**DB)) as conn:
-                    with conn.cursor() as cur:
-                        cur.execute("SELECT 1")
-                return self.reply(200, {"etat": "OK", "base": "accessible"})
-            except Exception:
-                return self.reply(503, {"etat": "INDISPONIBLE", "base": "inaccessible"})
-        if path.path == "/resultat":
-            matricule = parse_qs(path.query).get("matricule", [""])[0]
-            if not matricule:
-                return self.reply(400, {"erreur": "Matricule obligatoire"})
-            try:
-                with closing(psycopg2.connect(**DB)) as conn:
-                    with conn.cursor() as cur:
-                        cur.execute(
-                            "SELECT matricule, nom, serie, moyenne, admis "
-                            "FROM resultats WHERE matricule = %s", (matricule,))
-                        row = cur.fetchone()
-                if not row:
-                    return self.reply(404, {"erreur": "Candidat introuvable"})
-                return self.reply(200, {
-                    "matricule": row[0], "nom": row[1], "serie": row[2],
-                    "moyenne": float(row[3]), "admis": row[4]
-                })
-            except Exception:
-                return self.reply(503, {"erreur": "Base de données indisponible"})
-        return self.reply(404, {"erreur": "Route inconnue"})
+        u = urlparse(self.path)
+        try:
+            if u.path == "/sante":                    # sonde du répartiteur
+                requete("SELECT 1")
+                self.reponse(200, {"statut": "ok"})
+            elif u.path == "/info":                   # observe la répartition
+                self.reponse(200, {"hote": socket.gethostname()})
+            elif u.path == "/resultat":
+                m = parse_qs(u.query).get("matricule", [""])[0]
+                if not m:
+                    return self.reponse(400, {"erreur": "paramètre matricule manquant"})
+                rows = requete("SELECT matricule, nom, serie, moyenne, admis "
+                               "FROM resultats WHERE matricule = %s", (m,))
+                if not rows:
+                    return self.reponse(404, {"erreur": "matricule inconnu"})
+                r = rows[0]
+                self.reponse(200, {"matricule": r[0], "nom": r[1], "serie": r[2],
+                                   "moyenne": float(r[3]), "admis": r[4]})
+            else:
+                self.reponse(404, {"erreur": "route inconnue"})
+        except Exception:                             # base KO : 503 propre
+            self.reponse(503, {"erreur": "base de données indisponible"})
 
-ThreadingHTTPServer(("0.0.0.0", 3000), Handler).serve_forever()
+    def log_message(self, *args):
+        pass
+
+
+if __name__ == "__main__":
+    Serveur(("0.0.0.0", int(os.environ.get("PORT", "3000"))), H).serve_forever()

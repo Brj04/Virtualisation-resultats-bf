@@ -1,0 +1,8 @@
+==========================================
+TEST V1 - REPARTITION HAProxy
+==========================================
+URL testée : http://172.27.96.1:8082
+Serveurs attendus : app1 app2
+
+Envoi de 20 requêtes...
+ECHEC : réponse /info invalide : {"application":"resultats-bf","serveur":"app1"}

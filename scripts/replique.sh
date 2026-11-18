@@ -6,7 +6,6 @@ source /vagrant/scripts/common.sh
 
 # Parametres PostgreSQL
 PRIMARY_IP="$(ip_de bdd1)"
-RESEAU="$(reseau_prefixe).0/24"
 PG_VERSION="16"
 
 DATA_DIR="/var/lib/postgresql/${PG_VERSION}/main"
@@ -68,28 +67,8 @@ if [ "$ETAT_PRIMAIRE" != "f" ]; then
     exit 1
 fi
 
-# Configurer le serveur secondaire
-mkdir -p "/etc/postgresql/${PG_VERSION}/main/conf.d"
-
-cat > "/etc/postgresql/${PG_VERSION}/main/conf.d/90-resultats.conf" <<'CONF'
-listen_addresses = '*'
-hot_standby = on
-max_connections = 150
-wal_level = replica
-max_wal_senders = 5
-wal_keep_size = '128MB'
-CONF
-
-# Autoriser les applications du reseau a consulter la replique
-HBA="/etc/postgresql/${PG_VERSION}/main/pg_hba.conf"
-
-sed -i '/# BEGIN RESULTATS/,/# END RESULTATS/d' "$HBA"
-
-cat >> "$HBA" <<HBA
-# BEGIN RESULTATS
-host all ${DB_USER} ${RESEAU} scram-sha-256
-# END RESULTATS
-HBA
+# Configurer PostgreSQL avec les fonctions communes
+configurer_postgres
 
 # Si une replique existe deja, verifier son etat
 if [ -f "$DATA_DIR/standby.signal" ]; then
@@ -110,6 +89,7 @@ if [ -f "$DATA_DIR/standby.signal" ]; then
     fi
 
     log "La replique bdd2 existe et fonctionne."
+    installer_node_exporter
     exit 0
 fi
 
@@ -183,17 +163,24 @@ if [ "$ETAT" != "t" ]; then
     exit 1
 fi
 
-# Verifier la reception des journaux de replication
-REPLICATION_ACTIVE=$(sudo -u postgres psql -Atc \
-    "SELECT status FROM pg_stat_wal_receiver;" | tr -d '\r')
+# Attendre la confirmation du streaming pendant 15 secondes
+REPLICATION_ACTIVE=""
+
+for i in $(seq 1 15); do
+    REPLICATION_ACTIVE=$(sudo -u postgres psql -Atc "SELECT status FROM pg_stat_wal_receiver;" | tr -d '\r' || true)
+
+    if [ "$REPLICATION_ACTIVE" = "streaming" ]; then
+        break
+    fi
+
+    sleep 1
+done
 
 if [ "$REPLICATION_ACTIVE" != "streaming" ]; then
-    log "ATTENTION : la replique est en recovery, mais le streaming n'est pas confirme."
+    log "ATTENTION : la replique est en recovery, mais le streaming n'est pas confirme apres 15 secondes."
     exit 1
 fi
-
 installer_node_exporter
 
 log "Replication configuree avec succes sur bdd2"
 log "Adresse du primaire : $PRIMARY_IP"
-log "Reseau autorise : $RESEAU"

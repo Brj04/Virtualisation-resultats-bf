@@ -90,3 +90,18 @@ Fichiers documentés :
 - `feature/bascule` : préparation de la procédure de bascule.
 
 Les branches ont été publiées sur le dépôt distant du projet.
+
+## 7. Vérifications de la réplication et des données — 18/11/2026
+
+- Commande : `vagrant up`
+  - Résultat : les cinq machines (bdd1, bdd2, app1, app2 et lb1) sont démarrées sans erreur bloquante.
+  - HAProxy : configuration validée et service opérationnel sur lb1.
+  - Note : bdd1, bdd2, app1 et app2 étaient déjà provisionnées ; seul lb1 a exécuté son provisionneur pendant cette commande.
+
+- Commande : `vagrant ssh bdd2 -c "sudo -u postgres psql -Atc 'SELECT pg_is_in_recovery();'"`
+  - Résultat : `t` — bdd2 est bien en mode standby/réplica.
+
+- Commande : `vagrant ssh bdd1 -c "sudo -u postgres psql -d resultats -Atc 'SELECT COUNT(*) FROM resultats;'"`
+  - Résultat : `50000` — 50 000 résultats sont présents sur bdd1.
+
+- Réserve : le test de bascule effective et le contrôle explicite de l'état `streaming` de la réplication restent à réaliser.

@@ -1,4 +1,4 @@
-﻿# RÉSULTATS-BF
+# RÉSULTATS-BF
 
 ## Présentation
 
@@ -112,7 +112,9 @@ Utiliser `.env.exemple` pour partager la structure des variables d'environnement
 
 La configuration du serveur primaire et l'initialisation des données ont été réalisées et vérifiées.
 
-La configuration effective de la réplication sur bdd2, les tests de bascule et la redirection des applications restent à valider.
+La réplication PostgreSQL entre bdd1 et bdd2 est configurée. La bascule vers bdd2 est une opération manuelle. Après promotion, le script met à jour la variable DB_HOST de chaque serveur applicatif pour pointer directement vers bdd2, puis redémarre le service resultats. HAProxy conserve son contrôle externe du rôle primaire pour les connexions qui passent par lui.
+
+Les tests complets de bascule et de continuité du service restent à effectuer.
 
 ## Dépôt GitHub
 

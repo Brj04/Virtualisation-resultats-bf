@@ -1,62 +1,164 @@
 #!/usr/bin/env bash
-# Répartiteur HAProxy. Idempotent : ne recharge que si la configuration change.
-# Extension E1 : si plusieurs répartiteurs existent (WITH_LB2=1), keepalived porte une IP virtuelle.
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
 NOEUDS=/vagrant/config/noeuds.yml
 TPL=/vagrant/config/haproxy.cfg.tpl
 CIBLE=/etc/haproxy/haproxy.cfg
+CONTROLE=/usr/local/bin/check_pg_primary.sh
 
-if ! command -v haproxy >/dev/null 2>&1; then
-  apt-get update -qq
-  apt-get install -y -qq haproxy
-fi
+DB_USER="${DB_USER:-resultats_app}"
+DB_PASSWORD="${APP_DB_PASSWORD:-${DB_PASSWORD:-}}"
 
-SRV=$(mktemp); NOUVEAU=$(mktemp)
-trap 'rm -f "$SRV" "$NOUVEAU"' EXIT
+: "${DB_PASSWORD:?APP_DB_PASSWORD est obligatoire}"
 
-# Une ligne "server" par machine de rôle app, lue dans noeuds.yml.
-awk '/^- nom:/{nom=$3} /^  ip:/{ip=$2} /^  role:/{ if ($2=="app") printf "    server %s %s:3000 check\n", nom, ip }' "$NOEUDS" > "$SRV"
-[ -s "$SRV" ] || { echo "ERREUR : aucun serveur app dans $NOEUDS" >&2; exit 1; }
+# Récupération des adresses depuis noeuds.yml.
+ip_de() {
+    awk -v cible="$1" '
+        /^[[:space:]]*-[[:space:]]*nom:/ {
+            nom=$NF
+            gsub(/\r/, "", nom)
+        }
+        /^[[:space:]]*ip:/ {
+            ip=$NF
+            gsub(/\r/, "", ip)
+            if (nom == cible) {
+                print ip
+                exit
+            }
+        }
+    ' "$NOEUDS"
+}
 
-sed -e "/__SERVEURS__/{r $SRV" -e "d}" "$TPL" > "$NOUVEAU"
-haproxy -c -f "$NOUVEAU" >/dev/null
+BDD1_IP="$(ip_de bdd1)"
+BDD2_IP="$(ip_de bdd2)"
 
-systemctl enable haproxy >/dev/null 2>&1
-if ! cmp -s "$NOUVEAU" "$CIBLE"; then
-  install -m 644 "$NOUVEAU" "$CIBLE"
-  systemctl restart haproxy
-  echo "lb : configuration mise à jour ($(wc -l < "$SRV") serveurs app)"
-else
-  systemctl start haproxy
-  echo "lb : configuration déjà à jour"
-fi
+[ -n "$BDD1_IP" ] && [ -n "$BDD2_IP" ] || {
+    echo "ERREUR : adresses bdd1 ou bdd2 introuvables."
+    exit 1
+}
 
-# ---- E1 : keepalived et IP virtuelle (seulement s'il y a au moins deux répartiteurs) ----
-LBS=$(awk '/^- nom:/{nom=$3} /^  ip:/{ip=$2} /^  role:/{ if ($2=="lb") print nom, ip }' "$NOEUDS")
-if [ "$(echo "$LBS" | grep -c .)" -gt 1 ]; then
-  apt-get install -y -qq keepalived
+[ -f "$TPL" ] || {
+    echo "ERREUR : modèle HAProxy introuvable : $TPL"
+    exit 1
+}
 
-  MOI=$(hostname)
-  MON_IP=$(echo "$LBS" | awk -v m="$MOI" '$1==m {print $2}')
-  PAIR_IP=$(echo "$LBS" | awk -v m="$MOI" '$1!=m {print $2; exit}')
-  VIP=$(awk '/^vip:/ {print $2}' "$NOEUDS")
-  IFACE=$(ip -o -4 addr show | awk -v ip="$MON_IP" '$4 ~ "^" ip "/" {print $2; exit}')
-  [ -n "$MON_IP" ] && [ -n "$PAIR_IP" ] && [ -n "$VIP" ] && [ -n "$IFACE" ] \
-    || { echo "ERREUR keepalived : IP, pair, VIP ou interface introuvable" >&2; exit 1; }
+[ -f /vagrant/scripts/check_pg_primary.sh ] || {
+    echo "ERREUR : check_pg_primary.sh introuvable."
+    exit 1
+}
 
-  # Le premier répartiteur de la liste (lb1) est MASTER, les autres BACKUP.
-  if [ "$MOI" = "$(echo "$LBS" | head -1 | awk '{print $1}')" ]; then ETAT=MASTER; PRIO=100; else ETAT=BACKUP; PRIO=90; fi
+echo "[1/6] Installation des dépendances..."
+apt-get update -qq
+apt-get install -y -qq haproxy postgresql-client
 
-  KA=$(mktemp)
-  cat > "$KA" <<CONF
+echo "[2/6] Installation du contrôle PostgreSQL..."
+install -o root -g root -m 755 \
+    /vagrant/scripts/check_pg_primary.sh "$CONTROLE"
+
+echo "[3/6] Configuration sécurisée de l'authentification..."
+
+install -d -o haproxy -g haproxy -m 700 /var/lib/haproxy
+
+# Échapper les caractères spéciaux du format .pgpass.
+PASS_ESCAPED="${DB_PASSWORD//\\/\\\\}"
+PASS_ESCAPED="${PASS_ESCAPED//:/\\:}"
+
+PGPASS_TMP="$(mktemp)"
+trap 'rm -f "$PGPASS_TMP"' EXIT
+
+printf '%s:5432:resultats:%s:%s\n' \
+    "$BDD1_IP" "$DB_USER" "$PASS_ESCAPED" > "$PGPASS_TMP"
+
+printf '%s:5432:resultats:%s:%s\n' \
+    "$BDD2_IP" "$DB_USER" "$PASS_ESCAPED" >> "$PGPASS_TMP"
+
+install -o haproxy -g haproxy -m 600 \
+    "$PGPASS_TMP" /var/lib/haproxy/.pgpass
+
+echo "[4/6] Génération de la configuration HAProxy..."
+
+SRV="$(mktemp)"
+NOUVEAU="$(mktemp)"
+
+trap 'rm -f "$SRV" "$NOUVEAU" "$PGPASS_TMP"' EXIT
+
+awk '
+    { sub(sprintf("%c",13), "", $0) }
+    /^- nom:/ { nom=$3 }
+    /^  ip:/ { ip=$2 }
+    /^  role:/ {
+        if ($2=="app") printf "    server %s %s:3000 check\n", nom, ip
+    }
+' "$NOEUDS" > "$SRV"
+
+[ -s "$SRV" ] || {
+    echo "ERREUR : aucun serveur applicatif trouvé."
+    exit 1
+}
+
+sed \
+    -e "/__SERVEURS__/{r $SRV" -e "d}" \
+    -e "s|192.168.63.31|$BDD1_IP|g" \
+    -e "s|192.168.63.32|$BDD2_IP|g" \
+    "$TPL" > "$NOUVEAU"
+
+echo "[5/6] Validation de la configuration..."
+haproxy -c -f "$NOUVEAU"
+
+install -o root -g root -m 644 "$NOUVEAU" "$CIBLE"
+
+systemctl enable haproxy >/dev/null
+systemctl restart haproxy
+
+echo "HAProxy opérationnel."
+
+# Configuration Keepalived si deux répartiteurs sont déclarés.
+LBS="$(awk '
+    { sub(sprintf("%c",13), "", $0) }
+    /^- nom:/ { nom=$3 }
+    /^  ip:/ { ip=$2 }
+    /^  role:/ {
+        if ($2=="lb") print nom, ip
+    }
+' "$NOEUDS")"
+
+if [ "$(printf '%s\n' "$LBS" | grep -c .)" -gt 1 ]; then
+    echo "[6/6] Configuration de Keepalived..."
+
+    apt-get install -y -qq keepalived
+
+    MOI="$(hostname)"
+    MON_IP="$(printf '%s\n' "$LBS" | awk -v m="$MOI" '$1==m {print $2}')"
+    PAIR_IP="$(printf '%s\n' "$LBS" | awk -v m="$MOI" '$1!=m {print $2; exit}')"
+    VIP="$(awk '$1=="vip:" {print $2}' "$NOEUDS")"
+
+    IFACE="$(ip -o -4 addr show | awk -v ip="$MON_IP" '
+        index($4, ip "/")==1 {print $2; exit}
+    ')"
+
+    [ -n "$MON_IP" ] && [ -n "$PAIR_IP" ] &&
+    [ -n "$VIP" ] && [ -n "$IFACE" ] || {
+        echo "ERREUR : paramètres Keepalived incomplets."
+        exit 1
+    }
+
+    if [ "$MOI" = "$(printf '%s\n' "$LBS" | head -1 | awk '{print $1}')" ]; then
+        ETAT=MASTER
+        PRIO=100
+    else
+        ETAT=BACKUP
+        PRIO=90
+    fi
+
+    KA="$(mktemp)"
+
+    cat > "$KA" <<CONF
 global_defs {
     enable_script_security
     script_user root
 }
 
-# Un répartiteur dont HAProxy est arrêté cède l'IP virtuelle
 vrrp_script chk_haproxy {
     script "/usr/bin/systemctl is-active --quiet haproxy"
     interval 1
@@ -82,14 +184,23 @@ vrrp_instance VI_1 {
     }
 }
 CONF
-  systemctl enable keepalived >/dev/null 2>&1
-  if ! cmp -s "$KA" /etc/keepalived/keepalived.conf 2>/dev/null; then
-    install -m 644 "$KA" /etc/keepalived/keepalived.conf
+
+    install -d -m 755 /etc/keepalived
+    install -o root -g root -m 644 "$KA" /etc/keepalived/keepalived.conf
+
+    rm -f "$KA"
+
+    systemctl enable keepalived >/dev/null
     systemctl restart keepalived
-    echo "lb : keepalived mis à jour (${ETAT}, priorité ${PRIO}, IP virtuelle ${VIP})"
-  else
-    systemctl start keepalived
-    echo "lb : keepalived déjà à jour (${ETAT}, IP virtuelle ${VIP})"
-  fi
-  rm -f "$KA"
+
+    echo "Keepalived configuré : ${ETAT}, VIP ${VIP}"
+else
+    echo "[6/6] Un seul répartiteur : Keepalived non activé."
 fi
+
+echo "========================================"
+echo "Provisionnement de lb1 terminé."
+echo "HTTP : port 80"
+echo "PostgreSQL : port 5432"
+echo "BDD primaire détectée dynamiquement."
+echo "========================================"

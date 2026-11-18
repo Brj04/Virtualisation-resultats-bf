@@ -1,4 +1,4 @@
-﻿# Procédures d'administration de la base de données
+# Procédures d'administration de la base de données
 
 ## 1. Présentation
 
@@ -115,17 +115,28 @@ Le serveur secondaire doit apparaître dans les connexions de réplication.
 
 ## 6. Procédure de bascule
 
-Le fichier `scripts/bascule.sh` contient une procédure de bascule manuelle.
+Le fichier `scripts/bascule.sh` contient une procédure de bascule manuelle de bdd1 vers bdd2.
 
 Cette opération consiste à :
-1. vérifier que bdd2 est en mode secondaire ;
-2. arrêter le serveur primaire bdd1 ;
-3. promouvoir bdd2 en nouveau serveur primaire ;
-4. vérifier que bdd2 n'est plus en mode récupération.
 
-**Attention :** cette procédure ne doit pas être exécutée tant que la réplication n'a pas été validée et que les conséquences sur les applications n'ont pas été prises en compte.
+1. vérifier que bdd1 est le serveur primaire et bdd2 sa réplique ;
+2. vérifier que la réplication est active et que le récepteur WAL de bdd2 est en streaming ;
+3. arrêter temporairement les applications ;
+4. relever la dernière position WAL puis arrêter bdd1 ;
+5. attendre que bdd2 rejoue les dernières écritures ;
+6. promouvoir bdd2 en nouveau serveur primaire ;
+7. redémarrer les applications et vérifier leur disponibilité.
 
-Le script actuel ne réalise pas encore la redirection automatique des applications vers le nouveau serveur primaire.
+### Redirection des connexions PostgreSQL
+
+Avant la bascule, les applications utilisent HAProxy (`lb1`) comme adresse de connexion à PostgreSQL.
+
+Après la promotion de bdd2, le script `scripts/bascule.sh` met à jour directement la variable `DB_HOST` dans `/etc/resultats.env` sur chaque serveur applicatif. Cette variable reçoit l'adresse IP de bdd2, puis le service systemd `resultats` est redémarré afin que l'application utilise le nouveau serveur primaire.
+
+Le contrôle externe `check_pg_primary.sh` interroge les serveurs PostgreSQL à l'aide de `pg_is_in_recovery()`. HAProxy peut ainsi identifier le serveur qui n'est plus en mode récupération et lui diriger les connexions qui passent par lui.
+
+La redirection des applications et la continuité du service doivent être vérifiées lors des tests de bascule.
+**Attention :** cette procédure est manuelle. Elle ne constitue pas une bascule automatique en cas de panne de bdd1. Elle ne réalise pas non plus de bascule retour automatique vers bdd1.
 
 ## 7. Vérification après une bascule
 

@@ -45,8 +45,15 @@ if [ -e "$BACKUP_DIR" ]; then
     exit 1
 fi
 
-# Installer PostgreSQL
-apt_install postgresql-16 postgresql-client-16
+# Verifier et installer PostgreSQL si necessaire
+if ! dpkg-query -W -f='${Status}' postgresql-16 2>/dev/null | grep -q "install ok installed" ||
+   ! dpkg-query -W -f='${Status}' postgresql-client-16 2>/dev/null | grep -q "install ok installed"; then
+
+    log "Installation de PostgreSQL 16 et de son client"
+    apt_install postgresql-16 postgresql-client-16
+else
+    log "PostgreSQL 16 et son client sont deja installes."
+fi
 
 # Verifier que bdd1 est accessible
 if ! pg_isready -h "$PRIMARY_IP" -p 5432; then

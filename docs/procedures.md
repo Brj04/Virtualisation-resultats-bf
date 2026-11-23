@@ -161,55 +161,10 @@ bash scripts/bascule.sh --panne --confirme-bdd1-arretee
 ### Après une bascule
 
 - bdd2 est le primaire. bdd1 ne doit **pas** être redémarrée telle quelle : elle contient un état ancien et deviendrait un second primaire.
-- Il n'y a pas de bascule retour automatique. Pour revenir à une situation à deux serveurs, bdd1 doit être reconstruite comme réplique de bdd2 (voir la procédure de reconstruction de bdd1).
+-bdd1 doit être reconstruite comme réplique de bdd2 ; cette étape n'est pas automatisée (limite connue).
 - Le marqueur `/var/lib/postgresql/.resultats-bdd2-promoted` sur bdd2 empêche de relancer le provisionnement de la réplique sur un serveur déjà promu.
 
-### Connexion des applications à la base
 
-Les serveurs applicatifs ne passent pas par HAProxy pour joindre PostgreSQL. Chaque application se connecte **directement** à la base désignée par la variable `DB_HOST` du fichier `/etc/resultats.env`. Au démarrage, `DB_HOST` vaut l'adresse de bdd1. HAProxy (`lb1`) ne répartit que les requêtes HTTP entre les serveurs applicatifs.
-
-Pour basculer, le script change `DB_HOST` vers l'adresse de bdd2 sur chaque serveur applicatif, puis redémarre le service systemd `resultats`.
-
-### Mode planifié (bdd1 fonctionne)
-
-À utiliser pour une opération de maintenance, quand bdd1 est saine.
-
-```bash
-bash scripts/bascule.sh
-```
-
-Étapes :
-
-1. vérifier que bdd1 est primaire et bdd2 sa réplique ;
-2. vérifier que la réplication est en streaming ;
-3. arrêter temporairement les applications ;
-4. relever la dernière position WAL de bdd1, puis arrêter bdd1 ;
-5. attendre que bdd2 ait rejoué cette position (aucune écriture perdue) ;
-6. promouvoir bdd2 avec `pg_promote`, puis créer le marqueur de promotion ;
-7. changer `DB_HOST`, redémarrer les applications et vérifier HAProxy et les applications.
-
-Durée mesurée : 105 secondes, avec des données identiques avant et après.
-
-### Mode panne (bdd1 est tombée)
-
-À utiliser quand bdd1 est déjà arrêtée ou injoignable. Le script ne peut pas lui parler : il saute les étapes qui dépendent de bdd1.
-
-```bash
-vagrant halt bdd1        # si bdd1 n'est pas déjà éteinte
-bash scripts/bascule.sh --panne --confirme-bdd1-arretee
-```
-
-- L'option `--confirme-bdd1-arretee` est obligatoire : on affirme que bdd1 est éteinte. Sans elle, le script refuse de démarrer.
-- Si bdd1 répond encore comme primaire, le script refuse aussi, pour ne jamais avoir deux primaires.
-- Le script attend que bdd2 rejoue les journaux déjà reçus, puis la promeut et redirige les applications comme en mode planifié.
-
-**Limite :** les écritures validées sur bdd1 mais pas encore reçues par bdd2 au moment de la panne sont perdues.
-
-### Après une bascule
-
-- bdd2 est le primaire. bdd1 ne doit **pas** être redémarrée telle quelle : elle contient un état ancien et deviendrait un second primaire.
-- Il n'y a pas de bascule retour automatique. Pour revenir à une situation à deux serveurs, bdd1 doit être reconstruite comme réplique de bdd2 (voir la procédure de reconstruction de bdd1).
-- Le marqueur `/var/lib/postgresql/.resultats-bdd2-promoted` sur bdd2 empêche de relancer le provisionnement de la réplique sur un serveur déjà promu.
 
 ## 7. Vérification après une bascule
 

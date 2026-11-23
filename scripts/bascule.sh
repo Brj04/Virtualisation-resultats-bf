@@ -27,22 +27,55 @@ MARQUEUR="/var/lib/postgresql/.resultats-bdd2-promoted"
 DELAI_SYNCHRO=30
 DELAI_HAPROXY=30
 
+# Modes :
+#   (aucun argument)                      bascule planifiee : bdd1 est saine, le script l'arrete proprement
+#   --panne --confirme-bdd1-arretee       bdd1 est deja en panne / eteinte : on promeut bdd2
+MODE="planifie"
+CONFIRME=false
+for ARG in "$@"; do
+    case "$ARG" in
+        --panne) MODE="panne" ;;
+        --confirme-bdd1-arretee) CONFIRME=true ;;
+        *) echo "Usage : $0 [--panne --confirme-bdd1-arretee]"; exit 1 ;;
+    esac
+done
+
+if [ "$MODE" = "panne" ] && [ "$CONFIRME" != "true" ]; then
+    echo "ERREUR : le mode panne exige --confirme-bdd1-arretee."
+    echo "Confirme que bdd1 est eteinte (ex. vagrant halt bdd1) : deux primaires en meme temps"
+    echo "corrompraient les donnees."
+    exit 1
+fi
+
+
 echo "========================================"
-echo "       BASCULE MANUELLE DE LA BASE"
+if [ "$MODE" = "panne" ]; then echo "     BASCULE MANUELLE : MODE PANNE"; else echo "     BASCULE MANUELLE : MODE PLANIFIE"; fi
 echo "========================================"
 
 echo "[1/7] Verification de l'etat des serveurs..."
 
-ETAT_BDD1=$(vagrant ssh "$BDD1" -c \
-    "sudo -u postgres psql -X -Atqc 'SELECT pg_is_in_recovery();'" | tr -d '\r')
+if [ "$MODE" = "panne" ]; then
+    # Garde-fou : refuser si bdd1 repond encore comme primaire (risque de deux primaires)
+    ETAT_BDD1=$(timeout 30 vagrant ssh "$BDD1" -c \
+        "sudo -u postgres psql -X -Atqc 'SELECT pg_is_in_recovery();'" 2>/dev/null | tr -d '\r' || true)
+    if [ "$ETAT_BDD1" = "f" ]; then
+        echo "ERREUR : bdd1 repond encore comme primaire."
+        echo "Eteindre bdd1 (vagrant halt bdd1) ou utiliser le mode planifie."
+        exit 1
+    fi
+    echo "OK : bdd1 ne repond pas comme primaire (panne confirmee)."
+else
+    ETAT_BDD1=$(vagrant ssh "$BDD1" -c \
+        "sudo -u postgres psql -X -Atqc 'SELECT pg_is_in_recovery();'" | tr -d '\r')
+
+    if [ "$ETAT_BDD1" != "f" ]; then
+        echo "ERREUR : bdd1 n'est pas le serveur primaire."
+        exit 1
+    fi
+fi
 
 ETAT_BDD2=$(vagrant ssh "$BDD2" -c \
     "sudo -u postgres psql -X -Atqc 'SELECT pg_is_in_recovery();'" | tr -d '\r' || true)
-
-if [ "$ETAT_BDD1" != "f" ]; then
-    echo "ERREUR : bdd1 n'est pas le serveur primaire."
-    exit 1
-fi
 
 if [ "$ETAT_BDD2" != "t" ]; then
     echo "ERREUR : bdd2 n'est pas une replique."
@@ -58,23 +91,27 @@ echo "OK : bdd1 est primaire et bdd2 est replique."
 
 echo "[2/7] Verification de la replication..."
 
-ETAT_REPLICATION=$(vagrant ssh "$BDD1" -c \
-    "sudo -u postgres psql -X -Atqc \"SELECT count(*) FROM pg_stat_replication WHERE state='streaming';\"" | tr -d '\r')
+if [ "$MODE" = "panne" ]; then
+    echo "Ignoree en mode panne (bdd1 injoignable)."
+else
+    ETAT_REPLICATION=$(vagrant ssh "$BDD1" -c \
+        "sudo -u postgres psql -X -Atqc \"SELECT count(*) FROM pg_stat_replication WHERE state='streaming';\"" | tr -d '\r')
 
-if [ "$ETAT_REPLICATION" -lt 1 ]; then
-    echo "ERREUR : aucune replication active sur bdd1."
-    exit 1
+    if [ "$ETAT_REPLICATION" -lt 1 ]; then
+        echo "ERREUR : aucune replication active sur bdd1."
+        exit 1
+    fi
+
+    ETAT_RECEIVER=$(vagrant ssh "$BDD2" -c \
+        "sudo -u postgres psql -X -Atqc 'SELECT status FROM pg_stat_wal_receiver;'" | tr -d '\r')
+
+    if [ "$ETAT_RECEIVER" != "streaming" ]; then
+        echo "ERREUR : le recepteur WAL de bdd2 n'est pas en streaming."
+        exit 1
+    fi
+
+    echo "OK : replication active."
 fi
-
-ETAT_RECEIVER=$(vagrant ssh "$BDD2" -c \
-    "sudo -u postgres psql -X -Atqc 'SELECT status FROM pg_stat_wal_receiver;'" | tr -d '\r')
-
-if [ "$ETAT_RECEIVER" != "streaming" ]; then
-    echo "ERREUR : le recepteur WAL de bdd2 n'est pas en streaming."
-    exit 1
-fi
-
-echo "OK : replication active."
 
 echo "[3/7] Arret temporaire des applications..."
 
@@ -103,68 +140,80 @@ echo "OK : toutes les applications sont temporairement arretees."
 
 echo "[4/7] Capture de la derniere position WAL..."
 
-LSN_CIBLE=$(vagrant ssh "$BDD1" -c \
-    "sudo -u postgres psql -X -Atqc 'SELECT pg_current_wal_flush_lsn();'" | tr -d '\r' || true)
-
-if [ -z "$LSN_CIBLE" ]; then
-    echo "ERREUR : impossible de recuperer la position WAL."
-    echo "Redemarrage des applications..."
-
-    for APP in $APPS; do
-        vagrant ssh "$APP" -c "sudo systemctl start '$SERVICE_APP'" || true
+if [ "$MODE" = "panne" ]; then
+    echo "Mode panne : pas de capture ni d'arret de bdd1."
+    echo "Attente du rejeu des WAL deja recus par bdd2..."
+    for ((i=1; i<=DELAI_SYNCHRO; i++)); do
+        LSN_OK=$(vagrant ssh "$BDD2" -c \
+            "sudo -u postgres psql -X -Atqc \"SELECT COALESCE(pg_last_wal_replay_lsn() = pg_last_wal_receive_lsn(), false);\"" | tr -d '\r' || true)
+        [ "$LSN_OK" = "t" ] && break
+        sleep 1
     done
+    echo "ATTENTION : les ecritures de bdd1 non encore recues par bdd2 sont perdues."
+else
+    LSN_CIBLE=$(vagrant ssh "$BDD1" -c \
+        "sudo -u postgres psql -X -Atqc 'SELECT pg_current_wal_flush_lsn();'" | tr -d '\r' || true)
 
-    exit 1
-fi
+    if [ -z "$LSN_CIBLE" ]; then
+        echo "ERREUR : impossible de recuperer la position WAL."
+        echo "Redemarrage des applications..."
 
-echo "Position WAL cible : $LSN_CIBLE"
+        for APP in $APPS; do
+            vagrant ssh "$APP" -c "sudo systemctl start '$SERVICE_APP'" || true
+        done
 
-echo "Arret du serveur primaire bdd1..."
-
-if ! vagrant ssh "$BDD1" -c "sudo pg_ctlcluster 16 main stop"; then
-    echo "ERREUR : l'arret de bdd1 n'a pas pu etre confirme."
-    echo "Tentative de reprise de bdd1 et des applications..."
-
-    vagrant ssh "$BDD1" -c "sudo pg_ctlcluster 16 main start" || true
-
-    for APP in $APPS; do
-        vagrant ssh "$APP" -c "sudo systemctl start '$SERVICE_APP'" || true
-    done
-
-    exit 1
-fi
-
-echo "Attente du rejeu de la derniere position WAL sur bdd2..."
-
-SYNCHRONISE=false
-
-for ((i=1; i<=DELAI_SYNCHRO; i++)); do
-    LSN_OK=$(vagrant ssh "$BDD2" -c \
-        "sudo -u postgres psql -X -Atqc \"SELECT COALESCE(pg_wal_lsn_diff(pg_last_wal_replay_lsn(), '$LSN_CIBLE'::pg_lsn) >= 0, false);\"" | tr -d '\r' || true)
-
-    if [ "$LSN_OK" = "t" ]; then
-        SYNCHRONISE=true
-        break
+        exit 1
     fi
 
-    sleep 1
-done
+    echo "Position WAL cible : $LSN_CIBLE"
 
-if [ "$SYNCHRONISE" != "true" ]; then
-    echo "ERREUR : bdd2 n'a pas atteint la position WAL attendue."
-    echo "Tentative de redemarrage de bdd1..."
+    echo "Arret du serveur primaire bdd1..."
 
-    vagrant ssh "$BDD1" -c "sudo pg_ctlcluster 16 main start" || true
+    if ! vagrant ssh "$BDD1" -c "sudo pg_ctlcluster 16 main stop"; then
+        echo "ERREUR : l'arret de bdd1 n'a pas pu etre confirme."
+        echo "Tentative de reprise de bdd1 et des applications..."
 
-    for APP in $APPS; do
-        vagrant ssh "$APP" -c "sudo systemctl start '$SERVICE_APP'" || true
+        vagrant ssh "$BDD1" -c "sudo pg_ctlcluster 16 main start" || true
+
+        for APP in $APPS; do
+            vagrant ssh "$APP" -c "sudo systemctl start '$SERVICE_APP'" || true
+        done
+
+        exit 1
+    fi
+
+    echo "Attente du rejeu de la derniere position WAL sur bdd2..."
+
+    SYNCHRONISE=false
+
+    for ((i=1; i<=DELAI_SYNCHRO; i++)); do
+        LSN_OK=$(vagrant ssh "$BDD2" -c \
+            "sudo -u postgres psql -X -Atqc \"SELECT COALESCE(pg_wal_lsn_diff(pg_last_wal_replay_lsn(), '$LSN_CIBLE'::pg_lsn) >= 0, false);\"" | tr -d '\r' || true)
+
+        if [ "$LSN_OK" = "t" ]; then
+            SYNCHRONISE=true
+            break
+        fi
+
+        sleep 1
     done
 
-    echo "Bascule annulee. Verifier l'etat des deux bases."
-    exit 1
-fi
+    if [ "$SYNCHRONISE" != "true" ]; then
+        echo "ERREUR : bdd2 n'a pas atteint la position WAL attendue."
+        echo "Tentative de redemarrage de bdd1..."
 
-echo "OK : les dernieres ecritures ont ete rejouees."
+        vagrant ssh "$BDD1" -c "sudo pg_ctlcluster 16 main start" || true
+
+        for APP in $APPS; do
+            vagrant ssh "$APP" -c "sudo systemctl start '$SERVICE_APP'" || true
+        done
+
+        echo "Bascule annulee. Verifier l'etat des deux bases."
+        exit 1
+    fi
+
+    echo "OK : les dernieres ecritures ont ete rejouees."
+fi
 
 echo "[5/7] Promotion de bdd2..."
 
@@ -253,7 +302,11 @@ DUREE=$((FIN - DEBUT))
 echo "========================================"
 echo "          BASCULE TERMINEE"
 echo "========================================"
-echo "Ancien primaire : bdd1 (arrete)"
+if [ "$MODE" = "panne" ]; then
+    echo "Ancien primaire : bdd1 (en panne, ne pas la redemarrer telle quelle)"
+else
+    echo "Ancien primaire : bdd1 (arrete)"
+fi
 echo "Nouveau primaire : bdd2"
 echo "HAProxy : operationnel"
 echo "Applications : operationnelles sur tous les noeuds detectes"

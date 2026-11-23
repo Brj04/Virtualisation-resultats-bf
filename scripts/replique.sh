@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 set -euo pipefail
 
 # Charger les fonctions communes
@@ -29,6 +29,9 @@ if [ -f "$PROMOTED_MARKER" ]; then
     exit 1
 fi
 
+# Installer PostgreSQL avant de verifier ses repertoires
+apt_install postgresql-16 postgresql-client-16
+
 # Verifier les repertoires avant toute operation
 if [ ! -d "$DATA_DIR" ]; then
     log "ERREUR : le repertoire PostgreSQL $DATA_DIR est introuvable."
@@ -43,16 +46,6 @@ fi
 if [ -e "$BACKUP_DIR" ]; then
     log "ERREUR : une sauvegarde initiale existe deja : $BACKUP_DIR"
     exit 1
-fi
-
-# Verifier et installer PostgreSQL si necessaire
-if ! dpkg-query -W -f='${Status}' postgresql-16 2>/dev/null | grep -q "install ok installed" ||
-   ! dpkg-query -W -f='${Status}' postgresql-client-16 2>/dev/null | grep -q "install ok installed"; then
-
-    log "Installation de PostgreSQL 16 et de son client"
-    apt_install postgresql-16 postgresql-client-16
-else
-    log "PostgreSQL 16 et son client sont deja installes."
 fi
 
 # Verifier que bdd1 est accessible

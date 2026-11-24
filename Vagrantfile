@@ -63,8 +63,10 @@ FileUtils.mkdir_p(File.join(__dir__, 'config'))
 NOEUDS_YML = File.join(__dir__, 'config', 'noeuds.yml')
 contenu = YAML.dump({ 'groupe' => GROUPE, 'reseau' => RESEAU, 'vip' => "#{RESEAU}.5",
                       'avec_lb2' => WITH_LB2, 'noeuds' => NOEUDS })
-if !File.exist?(NOEUDS_YML) || File.read(NOEUDS_YML) != contenu
-  File.write(NOEUDS_YML, contenu)
+# Mode binaire : le fichier garde des fins de ligne Unix (LF) meme sur un poste Windows,
+# sinon les scripts qui le lisent dans les machines Linux recoivent des \r parasites.
+if !File.exist?(NOEUDS_YML) || File.binread(NOEUDS_YML).force_encoding('UTF-8') != contenu
+  File.binwrite(NOEUDS_YML, contenu)
 end
 
 # Secrets : transmis aux machines par variables d'environnement, jamais écrits dans le dépôt.
@@ -79,6 +81,7 @@ Vagrant.configure('2') do |config|
   NOEUDS.each do |n|
     config.vm.define n['nom'] do |m|
       m.vm.hostname = n['nom']
+      m.vm.boot_timeout = 600   # demarrage lent sur un poste charge (defaut : 300 s)
       m.vm.network 'private_network', ip: n['ip']
 
       # Seul lb1 est exposé sur le poste hôte.

@@ -1,0 +1,140 @@
+==========================================
+TEST V3 - TEST DE CHARGE
+==========================================
+URL : http://172.27.96.1:8082/info
+Nombre de requêtes : 100
+Délai maximal : 10s
+
+Requête 1 : HTTP 200 - 0.020037s - app1
+Requête 2 : HTTP 200 - 0.023208s - app2
+Requête 3 : HTTP 200 - 0.020233s - app1
+Requête 4 : HTTP 200 - 0.019266s - app2
+Requête 5 : HTTP 200 - 0.016870s - app1
+Requête 6 : HTTP 200 - 0.018264s - app2
+Requête 7 : HTTP 200 - 0.017046s - app1
+Requête 8 : HTTP 200 - 0.021238s - app2
+Requête 9 : HTTP 200 - 0.017338s - app1
+Requête 10 : HTTP 200 - 0.023891s - app2
+Requête 11 : HTTP 200 - 0.023987s - app1
+Requête 12 : HTTP 200 - 0.021074s - app2
+Requête 13 : HTTP 200 - 0.014724s - app1
+Requête 14 : HTTP 200 - 0.014779s - app2
+Requête 15 : HTTP 200 - 0.018436s - app1
+Requête 16 : HTTP 200 - 0.020021s - app2
+Requête 17 : HTTP 200 - 0.020699s - app1
+Requête 18 : HTTP 200 - 0.018256s - app2
+Requête 19 : HTTP 200 - 0.016059s - app1
+Requête 20 : HTTP 200 - 0.017110s - app2
+Requête 21 : HTTP 200 - 0.019964s - app1
+Requête 22 : HTTP 200 - 0.019262s - app2
+Requête 23 : HTTP 200 - 0.017628s - app1
+Requête 24 : HTTP 200 - 0.097476s - app2
+Requête 25 : HTTP 200 - 0.068926s - app1
+Requête 26 : HTTP 200 - 0.041377s - app2
+Requête 27 : HTTP 200 - 0.027226s - app1
+Requête 28 : HTTP 200 - 0.020509s - app2
+Requête 29 : HTTP 200 - 0.021297s - app1
+Requête 30 : HTTP 200 - 0.016398s - app2
+Requête 31 : HTTP 200 - 0.019738s - app1
+Requête 32 : HTTP 200 - 0.020367s - app2
+Requête 33 : HTTP 200 - 0.018445s - app1
+Requête 34 : HTTP 200 - 0.018825s - app2
+Requête 35 : HTTP 200 - 0.016589s - app1
+Requête 36 : HTTP 200 - 0.017806s - app2
+Requête 37 : HTTP 200 - 0.019780s - app1
+Requête 38 : HTTP 200 - 0.018524s - app2
+Requête 39 : HTTP 200 - 0.021607s - app1
+Requête 40 : HTTP 200 - 0.018593s - app2
+Requête 41 : HTTP 200 - 0.016771s - app1
+Requête 42 : HTTP 200 - 0.021464s - app2
+Requête 43 : HTTP 200 - 0.018121s - app1
+Requête 44 : HTTP 200 - 0.017653s - app2
+Requête 45 : HTTP 200 - 0.021367s - app1
+Requête 46 : HTTP 200 - 0.020929s - app2
+Requête 47 : HTTP 200 - 0.022046s - app1
+Requête 48 : HTTP 200 - 0.016876s - app2
+Requête 49 : HTTP 200 - 0.028390s - app1
+Requête 50 : HTTP 200 - 0.018589s - app2
+Requête 51 : HTTP 200 - 0.023128s - app1
+Requête 52 : HTTP 200 - 0.024576s - app2
+Requête 53 : HTTP 200 - 0.021646s - app1
+Requête 54 : HTTP 200 - 0.034172s - app2
+Requête 55 : HTTP 200 - 0.018797s - app1
+Requête 56 : HTTP 200 - 0.017718s - app2
+Requête 57 : HTTP 200 - 0.044047s - app1
+Requête 58 : HTTP 200 - 0.021408s - app2
+Requête 59 : HTTP 200 - 0.020861s - app1
+Requête 60 : HTTP 200 - 0.020065s - app2
+Requête 61 : HTTP 200 - 0.030172s - app1
+Requête 62 : HTTP 200 - 0.020997s - app2
+Requête 63 : HTTP 200 - 0.023858s - app1
+Requête 64 : HTTP 200 - 0.019072s - app2
+Requête 65 : HTTP 200 - 0.016439s - app1
+Requête 66 : HTTP 200 - 0.017024s - app2
+Requête 67 : HTTP 200 - 0.019305s - app1
+Requête 68 : HTTP 200 - 0.016847s - app2
+Requête 69 : HTTP 200 - 0.014181s - app1
+Requête 70 : HTTP 200 - 0.013224s - app2
+Requête 71 : HTTP 200 - 0.021717s - app1
+Requête 72 : HTTP 200 - 0.014138s - app2
+Requête 73 : HTTP 200 - 0.014553s - app1
+Requête 74 : HTTP 200 - 0.017588s - app2
+Requête 75 : HTTP 200 - 0.015964s - app1
+Requête 76 : HTTP 200 - 0.014079s - app2
+Requête 77 : HTTP 200 - 0.012411s - app1
+Requête 78 : HTTP 200 - 0.013441s - app2
+Requête 79 : HTTP 200 - 0.018427s - app1
+Requête 80 : HTTP 200 - 0.012506s - app2
+Requête 81 : HTTP 200 - 0.018828s - app1
+Requête 82 : HTTP 200 - 0.014537s - app2
+Requête 83 : HTTP 200 - 0.017480s - app1
+Requête 84 : HTTP 200 - 0.012335s - app2
+Requête 85 : HTTP 200 - 0.013810s - app1
+Requête 86 : HTTP 200 - 0.012619s - app2
+Requête 87 : HTTP 200 - 0.013089s - app1
+Requête 88 : HTTP 200 - 0.013598s - app2
+Requête 89 : HTTP 200 - 0.012664s - app1
+Requête 90 : HTTP 200 - 0.014037s - app2
+Requête 91 : HTTP 200 - 0.012869s - app1
+Requête 92 : HTTP 200 - 0.017983s - app2
+Requête 93 : HTTP 200 - 0.020139s - app1
+Requête 94 : HTTP 200 - 0.016346s - app2
+Requête 95 : HTTP 200 - 0.014085s - app1
+Requête 96 : HTTP 200 - 0.014894s - app2
+Requête 97 : HTTP 200 - 0.013253s - app1
+Requête 98 : HTTP 200 - 0.014303s - app2
+Requête 99 : HTTP 200 - 0.015221s - app1
+Requête 100 : HTTP 200 - 0.014754s - app2
+
+==========================================
+RÉSULTATS DU TEST V3
+==========================================
+Requêtes prévues        : 100
+Requêtes réussies       : 100
+Requêtes échouées       : 0
+Temps moyen (secondes)  : 0.020
+Temps minimum (secondes): 0.012
+Temps maximum (secondes): 0.097
+Durée totale (secondes) : 11.007
+Débit (requêtes/s)      : 9.09
+
+Répartition observée :
+app2 : 50 réponse(s)
+app1 : 50 réponse(s)
+TEST V3 - TEST DE CHARGE
+Date : 2026-11-23 14:46:23
+URL : http://172.27.96.1:8082/info
+Requêtes prévues : 100
+Requêtes réussies : 100
+Requêtes échouées : 0
+Temps moyen (s) : 0.020
+Temps minimum (s) : 0.012
+Temps maximum (s) : 0.097
+Durée totale (ms) : 11007
+Débit des succès (req/s) : 9.09
+
+Répartition par serveur :
+app2 : 50 réponse(s)
+app1 : 50 réponse(s)
+
+RÉSULTAT : SUCCÈS - toutes les requêtes ont répondu HTTP 200.

@@ -58,7 +58,16 @@ if [[ ! "$PORT_HOTE" =~ ^[0-9]+$ ]] ||
     exit 1
 fi
 
-URL="http://127.0.0.1:${PORT_HOTE}"
+HOTE_TEST="${HOTE_TEST:-127.0.0.1}"
+PORT_TEST="${PORT_TEST:-$PORT_HOTE}"
+
+if [[ ! "$PORT_TEST" =~ ^[0-9]+$ ]] ||
+   (( PORT_TEST < 1 || PORT_TEST > 65535 )); then
+    echo "ERREUR : PORT_TEST absent ou invalide." >&2
+    exit 1
+fi
+
+URL="http://${HOTE_TEST}:${PORT_TEST}"
 URL_SANTE="${URL}/sante"
 URL_RESULTAT="${URL}/resultat?matricule=BF2026-000001"
 

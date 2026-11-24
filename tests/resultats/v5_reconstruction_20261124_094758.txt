@@ -1,0 +1,12 @@
+
+===== TEST V5 - RECONSTRUCTION =====
+Date : 2026-11-24 09:47:59
+Situation : bdd1 reconstruite depuis bdd2
+bdd1 : réplica confirmé
+bdd2 : principal confirmé
+Récepteur WAL : streaming
+Source WAL : 192.168.63.32
+/sante : HTTP 200
+/resultat : HTTP 200
+Vérification JSON : conforme
+RÉSULTAT : SUCCÈS

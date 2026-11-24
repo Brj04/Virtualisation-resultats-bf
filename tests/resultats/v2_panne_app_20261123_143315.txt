@@ -1,0 +1,43 @@
+==========================================
+TEST V2 - PANNE D'UN SERVEUR APPLICATIF
+==========================================
+Serveur supposé en panne : app1
+Serveurs restants : app2
+URL testée : http://172.27.96.1:8082
+
+Attente de 4 secondes pour la détection HAProxy...
+
+Envoi de 20 requêtes...
+Requête 1 : HTTP 200 depuis app2
+Requête 2 : HTTP 200 depuis app2
+Requête 3 : HTTP 200 depuis app2
+Requête 4 : HTTP 200 depuis app2
+Requête 5 : HTTP 200 depuis app2
+Requête 6 : HTTP 200 depuis app2
+Requête 7 : HTTP 200 depuis app2
+Requête 8 : HTTP 200 depuis app2
+Requête 9 : HTTP 200 depuis app2
+Requête 10 : HTTP 200 depuis app2
+Requête 11 : HTTP 200 depuis app2
+Requête 12 : HTTP 200 depuis app2
+Requête 13 : HTTP 200 depuis app2
+Requête 14 : HTTP 200 depuis app2
+Requête 15 : HTTP 200 depuis app2
+Requête 16 : HTTP 200 depuis app2
+Requête 17 : HTTP 200 depuis app2
+Requête 18 : HTTP 200 depuis app2
+Requête 19 : HTTP 200 depuis app2
+Requête 20 : HTTP 200 depuis app2
+
+===== RÉSULTATS =====
+app2 : 20 réponse(s)
+TEST V2 - PANNE D'UN SERVEUR APPLICATIF
+Date : 2026-11-23 14:33:25
+Serveur en panne : app1
+URL : http://172.27.96.1:8082
+Nombre de requêtes : 20
+
+app2 : 20 réponse(s)
+
+RÉSULTAT : SUCCÈS
+Le service reste accessible malgré la panne de app1.

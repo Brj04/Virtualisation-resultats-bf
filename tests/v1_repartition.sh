@@ -93,7 +93,7 @@ for ((i = 1; i <= NB_REQUETES; i++)); do
 import json
 import sys
 try:
-    print(json.load(sys.stdin)["hote"])
+    print(json.load(sys.stdin)["serveur"])
 except (ValueError, KeyError, TypeError):
     sys.exit(1)
 ' <<< "$REPONSE") || {

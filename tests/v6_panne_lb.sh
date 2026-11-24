@@ -43,7 +43,7 @@ if [[ "$WITH_LB2" != "1" ]]; then
 fi
 
 # Vérifier que la configuration générée contient bien lb2.
-AVEC_LB2=$(awk -F': ' '/^avec_lb2:/ {print $2; exit}' "$FICHIER_NOEUDS")
+AVEC_LB2=$(awk '{ sub(/\r$/, "") } /^avec_lb2:/ {print $2; exit}' "$FICHIER_NOEUDS")
 
 if [[ "$AVEC_LB2" != "true" ]]; then
     echo "ERREUR : avec_lb2 doit être true dans config/noeuds.yml."
@@ -51,7 +51,7 @@ if [[ "$AVEC_LB2" != "true" ]]; then
 fi
 
 # Récupérer la VIP depuis la configuration générée.
-VIP=$(awk -F': ' '/^vip:/ {print $2; exit}' "$FICHIER_NOEUDS")
+VIP=$(awk '{ sub(/\r$/, "") } /^vip:/ {print $2; exit}' "$FICHIER_NOEUDS")
 
 if [[ -z "$VIP" ]]; then
     echo "ERREUR : VIP introuvable dans config/noeuds.yml."

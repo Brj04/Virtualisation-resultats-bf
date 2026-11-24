@@ -39,7 +39,9 @@ if [[ ! "$PORT_HOTE" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
-URL="http://127.0.0.1:${PORT_HOTE}/info"
+HOTE_TEST="${HOTE_TEST:-127.0.0.1}"
+PORT_TEST="${PORT_TEST:-$PORT_HOTE}"
+URL="http://${HOTE_TEST}:${PORT_TEST}/info"
 
 # ----------------------------------------------------------
 # 3. Paramètres du test
@@ -124,7 +126,7 @@ import sys
 
 try:
     donnees = json.load(sys.stdin)
-    serveur = donnees["hote"]
+    serveur = donnees["serveur"]
     if not isinstance(serveur, str) or not serveur.strip():
         raise ValueError("Nom de serveur invalide")
     print(serveur)

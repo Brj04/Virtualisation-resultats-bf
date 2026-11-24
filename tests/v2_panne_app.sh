@@ -45,21 +45,18 @@ if [[ ! "$PORT_HOTE" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
-URL="http://127.0.0.1:${PORT_HOTE}"
-
+HOTE_TEST="${HOTE_TEST:-127.0.0.1}"
+PORT_TEST="${PORT_TEST:-$PORT_HOTE}"
+URL="http://${HOTE_TEST}:${PORT_TEST}"
 # ----------------------------------------------------------
 # 4. Détection des serveurs applicatifs
 # ----------------------------------------------------------
 
 mapfile -t SERVEURS_ATTENDUS < <(
-    awk '
-        /^- nom:/ { nom=$3 }
-        /^[[:space:]]+role:/ {
-            if ($2 == "app") print nom
-        }
-    ' "$FICHIER_NOEUDS"
+    grep -B 3 'role: app' "$FICHIER_NOEUDS" |
+    grep 'nom:' |
+    sed -E 's/.*nom:[[:space:]]*//; s/\r$//'
 )
-
 SERVEUR_PRESENT=0
 SERVEURS_RESTANTS=()
 
@@ -101,8 +98,8 @@ echo "Serveurs restants : ${SERVEURS_RESTANTS[*]}"
 echo "URL testée : $URL"
 
 echo
-echo "Attente de 4 secondes pour la détection HAProxy..."
-sleep 4
+echo "Attente de 8 secondes pour la détection HAProxy..."
+sleep 8
 
 # ----------------------------------------------------------
 # 6. Envoi des requêtes
@@ -130,7 +127,7 @@ fi
 import json
 import sys
 try:
-    print(json.load(sys.stdin)["hote"])
+    print(json.load(sys.stdin)["serveur"])
 except (ValueError, KeyError, TypeError):
     sys.exit(1)
 ' <<< "$REPONSE") || {

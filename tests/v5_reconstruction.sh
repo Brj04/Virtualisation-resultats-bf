@@ -1,12 +1,12 @@
 
 #!/usr/bin/env bash
-# RÃ‰SULTATS-BF : V5 - VÃ©rification de la reconstruction de bdd1.
-# La reconstruction de bdd1 doit Ãªtre rÃ©alisÃ©e manuellement au prÃ©alable.
+# RÉSULTATS-BF : V5 - Vérification de la reconstruction de bdd1.
+# La reconstruction de bdd1 doit être réalisée manuellement au préalable.
 
 set -euo pipefail
 
 # ----------------------------------------------------------
-# 1. VÃ©rification de l'environnement
+# 1. Vérification de l'environnement
 # ----------------------------------------------------------
 
 RACINE="/vagrant"
@@ -19,17 +19,17 @@ if [[ ! -s "$FICHIER_NOEUDS" ]]; then
 fi
 
 if [[ "$EUID" -ne 0 ]]; then
-    echo "ERREUR : exÃ©cuter ce script avec sudo." >&2
+    echo "ERREUR : exécuter ce script avec sudo." >&2
     exit 1
 fi
 
 if [[ "$(hostname -s)" != "bdd1" ]]; then
-    echo "ERREUR : ce test doit Ãªtre exÃ©cutÃ© sur bdd1." >&2
+    echo "ERREUR : ce test doit être exécuté sur bdd1." >&2
     exit 1
 fi
 
 # ----------------------------------------------------------
-# 2. Lecture de la configuration rÃ©seau
+# 2. Lecture de la configuration réseau
 # ----------------------------------------------------------
 
 RESEAU=$(awk -F': *' '
@@ -41,7 +41,7 @@ RESEAU=$(awk -F': *' '
 ' "$FICHIER_NOEUDS")
 
 if [[ ! "$RESEAU" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo "ERREUR : rÃ©seau absent ou invalide dans noeuds.yml." >&2
+    echo "ERREUR : réseau absent ou invalide dans noeuds.yml." >&2
     exit 1
 fi
 
@@ -72,7 +72,7 @@ APP_DB_PASSWORD=$(awk -F= '
 ' "$FICHIER_ENV")
 
 if [[ -z "$APP_DB_PASSWORD" || "$APP_DB_PASSWORD" == "changez_moi" ]]; then
-    echo "ERREUR : APP_DB_PASSWORD absent ou non configurÃ© dans .env." >&2
+    echo "ERREUR : APP_DB_PASSWORD absent ou non configuré dans .env." >&2
     exit 1
 fi
 
@@ -88,7 +88,7 @@ APP_DB_PASSWORD_ESCAPED="${APP_DB_PASSWORD//\\/\\\\}"
 APP_DB_PASSWORD_ESCAPED="${APP_DB_PASSWORD_ESCAPED//:/\\:}"
 
 printf '%s:%s:%s:%s:%s\n' \
-    "$IP_BDD2" "5432" "resultats" \
+    "$IP_BDD2" "5432" "resultatsbf" \
     "resultats_app" "$APP_DB_PASSWORD_ESCAPED" > "$FICHIER_PGPASS_TEST"
 
 chmod 600 "$FICHIER_PGPASS_TEST"
@@ -96,7 +96,7 @@ unset APP_DB_PASSWORD APP_DB_PASSWORD_ESCAPED
 
 
 # ----------------------------------------------------------
-# 3. VÃ©rification des outils
+# 3. Vérification des outils
 # ----------------------------------------------------------
 
 for outil in awk date curl python3 psql pg_isready pg_lsclusters runuser; do
@@ -119,19 +119,19 @@ echo "=========================================="
 echo "TEST V5 - RECONSTRUCTION DE BDD1"
 echo "=========================================="
 echo "Date : $(date '+%Y-%m-%d %H:%M:%S')"
-echo "bdd1 : rÃ©plica attendu"
+echo "bdd1 : réplica attendu"
 echo "bdd2 : principal attendu"
 
 enregistrer_echec() {
     local message="$1"
 
     echo
-    echo "RÃ‰SULTAT : Ã‰CHEC"
+    echo "RÉSULTAT : ÉCHEC"
     echo "$message"
 
     {
         echo
-        echo "===== Ã‰CHEC V5 ====="
+        echo "===== ÉCHEC V5 ====="
         echo "Date : $(date '+%Y-%m-%d %H:%M:%S')"
         echo "$message"
     } | tee -a "$FICHIER_PREUVE"
@@ -140,18 +140,18 @@ enregistrer_echec() {
 }
 
 # ----------------------------------------------------------
-# 5. VÃ©rification de PostgreSQL sur bdd1
+# 5. Vérification de PostgreSQL sur bdd1
 # ----------------------------------------------------------
 
 VERSION=$(pg_lsclusters --no-header |
     awk '$2 == "main" { print $1; exit }')
 
 if [[ -z "$VERSION" ]]; then
-    enregistrer_echec "Aucun cluster PostgreSQL main dÃ©tectÃ© sur bdd1."
+    enregistrer_echec "Aucun cluster PostgreSQL main détecté sur bdd1."
 fi
 
 if ! pg_isready -h 127.0.0.1 -p 5432 >/dev/null 2>&1; then
-    enregistrer_echec "PostgreSQL ne rÃ©pond pas sur bdd1."
+    enregistrer_echec "PostgreSQL ne répond pas sur bdd1."
 fi
 
 if ! ETAT_LOCAL=$(runuser -u postgres -- \
@@ -159,19 +159,19 @@ if ! ETAT_LOCAL=$(runuser -u postgres -- \
     -v ON_ERROR_STOP=1 \
     -c "SELECT pg_is_in_recovery();" |
     tr -d '[:space:]'); then
-    enregistrer_echec "Impossible de vÃ©rifier l'Ã©tat PostgreSQL de bdd1."
+    enregistrer_echec "Impossible de vérifier l'état PostgreSQL de bdd1."
 fi
 
 if [[ "$ETAT_LOCAL" != "t" ]]; then
-    enregistrer_echec "bdd1 n'est pas en mode rÃ©plica (pg_is_in_recovery() diffÃ©rent de true)."
+    enregistrer_echec "bdd1 n'est pas en mode réplica (pg_is_in_recovery() différent de true)."
 fi
 
 echo
-echo "PostgreSQL bdd1 : opÃ©rationnel"
-echo "Mode rÃ©plica : confirmÃ©"
+echo "PostgreSQL bdd1 : opérationnel"
+echo "Mode réplica : confirmé"
 
 # ----------------------------------------------------------
-# 6. VÃ©rification de bdd2 comme serveur principal
+# 6. Vérification de bdd2 comme serveur principal
 # ----------------------------------------------------------
 
 
@@ -180,22 +180,22 @@ if ! ETAT_BDD2=$(PGPASSFILE="$FICHIER_PGPASS_TEST" \
     -h "$IP_BDD2" \
     -p 5432 \
     -U resultats_app \
-    -d resultats \
+    -d resultatsbf \
     -v ON_ERROR_STOP=1 \
     -c "SELECT pg_is_in_recovery();" |
     tr -d '[:space:]'); then
-    enregistrer_echec "Impossible de vÃ©rifier l'Ã©tat PostgreSQL de bdd2."
+    enregistrer_echec "Impossible de vérifier l'état PostgreSQL de bdd2."
 fi
 
 
 if [[ "$ETAT_BDD2" != "f" ]]; then
-    enregistrer_echec "bdd2 n'est pas confirmÃ© comme serveur principal."
+    enregistrer_echec "bdd2 n'est pas confirmé comme serveur principal."
 fi
 
-echo "PostgreSQL bdd2 : serveur principal confirmÃ©"
+echo "PostgreSQL bdd2 : serveur principal confirmé"
 
 # ----------------------------------------------------------
-# 7. VÃ©rification de la rÃ©plication inverse
+# 7. Vérification de la réplication inverse
 # ----------------------------------------------------------
 
 if ! ETAT_RECEPTEUR=$(runuser -u postgres -- \
@@ -207,29 +207,29 @@ if ! ETAT_RECEPTEUR=$(runuser -u postgres -- \
         LIMIT 1;
     " |
     tr -d '\r'); then
-    enregistrer_echec "Impossible de vÃ©rifier le rÃ©cepteur WAL sur bdd1."
+    enregistrer_echec "Impossible de vérifier le récepteur WAL sur bdd1."
 fi
 
 if [[ -z "$ETAT_RECEPTEUR" ]]; then
-    enregistrer_echec "Aucun rÃ©cepteur WAL actif sur bdd1."
+    enregistrer_echec "Aucun récepteur WAL actif sur bdd1."
 fi
 
 STATUT_RECEPTEUR="${ETAT_RECEPTEUR%%|*}"
 IP_EMETTEUR="${ETAT_RECEPTEUR#*|}"
 
-echo "Ã‰tat du rÃ©cepteur WAL : $STATUT_RECEPTEUR"
+echo "État du récepteur WAL : $STATUT_RECEPTEUR"
 echo "Serveur source WAL : $IP_EMETTEUR"
 
 if [[ "$STATUT_RECEPTEUR" != "streaming" ]]; then
-    enregistrer_echec "La rÃ©plication WAL n'est pas en Ã©tat streaming."
+    enregistrer_echec "La réplication WAL n'est pas en état streaming."
 fi
 
 if [[ "$IP_EMETTEUR" != "$IP_BDD2" ]]; then
-    enregistrer_echec "Le rÃ©cepteur WAL ne reÃ§oit pas depuis bdd2 ($IP_BDD2)."
+    enregistrer_echec "Le récepteur WAL ne reçoit pas depuis bdd2 ($IP_BDD2)."
 fi
 
 # ----------------------------------------------------------
-# 8. Fonctions de vÃ©rification HTTP et JSON
+# 8. Fonctions de vérification HTTP et JSON
 # ----------------------------------------------------------
 
 obtenir_code_http() {
@@ -282,17 +282,17 @@ try:
             )
             sys.exit(1)
 
-    print("Contenu JSON : candidat et rÃ©sultat conformes.")
+    print("Contenu JSON : candidat et résultat conformes.")
     sys.exit(0)
 
 except (json.JSONDecodeError, AttributeError) as erreur:
-    print(f"ERREUR : rÃ©ponse JSON invalide : {erreur}")
+    print(f"ERREUR : réponse JSON invalide : {erreur}")
     sys.exit(1)
 '
 }
 
 # ----------------------------------------------------------
-# 9. VÃ©rification du service applicatif
+# 9. Vérification du service applicatif
 # ----------------------------------------------------------
 
 CODE_SANTE=$(obtenir_code_http "$URL_SANTE")
@@ -303,15 +303,15 @@ echo "/sante : HTTP $CODE_SANTE"
 echo "/resultat : HTTP $CODE_RESULTAT"
 
 if [[ "$CODE_SANTE" != "200" ]]; then
-    enregistrer_echec "Le service applicatif n'est pas opÃ©rationnel."
+    enregistrer_echec "Le service applicatif n'est pas opérationnel."
 fi
 
 if [[ "$CODE_RESULTAT" != "200" ]]; then
-    enregistrer_echec "La recherche de rÃ©sultat Ã©choue."
+    enregistrer_echec "La recherche de résultat échoue."
 fi
 
 if ! CORPS_RESULTAT=$(obtenir_corps_resultat); then
-    enregistrer_echec "Impossible de rÃ©cupÃ©rer le rÃ©sultat JSON."
+    enregistrer_echec "Impossible de récupérer le résultat JSON."
 fi
 
 if ! verifier_resultat "$CORPS_RESULTAT"; then
@@ -327,16 +327,16 @@ fi
     echo "===== TEST V5 - RECONSTRUCTION ====="
     echo "Date : $(date '+%Y-%m-%d %H:%M:%S')"
     echo "Situation : bdd1 reconstruite depuis bdd2"
-    echo "bdd1 : rÃ©plica confirmÃ©"
-    echo "bdd2 : principal confirmÃ©"
-    echo "RÃ©cepteur WAL : $STATUT_RECEPTEUR"
+    echo "bdd1 : réplica confirmé"
+    echo "bdd2 : principal confirmé"
+    echo "Récepteur WAL : $STATUT_RECEPTEUR"
     echo "Source WAL : $IP_EMETTEUR"
     echo "/sante : HTTP $CODE_SANTE"
     echo "/resultat : HTTP $CODE_RESULTAT"
-    echo "VÃ©rification JSON : conforme"
-    echo "RÃ‰SULTAT : SUCCÃˆS"
+    echo "Vérification JSON : conforme"
+    echo "RÉSULTAT : SUCCÈS"
 } | tee -a "$FICHIER_PREUVE"
 
 echo
-echo "RÃ‰SULTAT : SUCCÃˆS"
-echo "bdd1 est de nouveau un rÃ©plica de bdd2."
+echo "RÉSULTAT : SUCCÈS"
+echo "bdd1 est de nouveau un réplica de bdd2."

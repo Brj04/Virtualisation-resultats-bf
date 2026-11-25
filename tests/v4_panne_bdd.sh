@@ -69,12 +69,12 @@ fi
 
 URL="http://${HOTE_TEST}:${PORT_TEST}"
 URL_SANTE="${URL}/sante"
-URL_RESULTAT="${URL}/resultat?matricule=BF2026-000001"
+URL_RESULTAT="${URL}/resultat?matricule=BF000001"
 
 # ----------------------------------------------------------
 # 4. Vérification des outils
 # ----------------------------------------------------------
-for outil in curl awk date python3; do
+for outil in curl awk date py; do
     if ! command -v "$outil" >/dev/null 2>&1; then
         echo "ERREUR : outil requis absent : $outil" >&2
         exit 1
@@ -112,7 +112,7 @@ obtenir_corps_resultat() {
 verifier_resultat() {
     local contenu="$1"
 
-    printf '%s' "$contenu" | python3 -c '
+    printf '%s' "$contenu" | py -3 -c '
 import json
 import sys
 
@@ -120,10 +120,10 @@ try:
     resultat = json.load(sys.stdin)
 
     attendu = {
-        "matricule": "BF2026-000001",
-        "nom": "Candidat 00001",
+        "matricule": "BF000001",
+        "nom": "CANDIDAT_1",
         "serie": "C",
-        "moyenne": 0.37,
+        "moyenne": 9.14,
         "admis": False
     }
 

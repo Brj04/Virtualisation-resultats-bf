@@ -123,11 +123,11 @@ if [[ "$CODE_HTTP" != "200" ]]; then
     exit 1
 fi
 
-    SERVEUR=$(python3 -c '
+    SERVEUR=$(py -3 -c '
 import json
 import sys
 try:
-    print(json.load(sys.stdin)["serveur"])
+    print(json.load(sys.stdin)["hote"])
 except (ValueError, KeyError, TypeError):
     sys.exit(1)
 ' <<< "$REPONSE") || {

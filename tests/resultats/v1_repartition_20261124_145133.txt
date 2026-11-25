@@ -1,0 +1,7 @@
+TEST V1 - REPARTITION HAProxy
+Date : 2026-11-24 14:51:33
+URL : http://127.0.0.1:8081
+Nombre de requêtes : 20
+
+app1 : 10 réponse(s)
+app2 : 10 réponse(s)

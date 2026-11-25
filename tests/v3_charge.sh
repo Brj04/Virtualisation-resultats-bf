@@ -120,13 +120,13 @@ for ((i = 1; i <= NB_REQUETES; i++)); do
     fi
 
     # Extraction du nom du serveur depuis le JSON déjà reçu.
-    SERVEUR=$(printf '%s' "$REPONSE" | python3 -c '
+    SERVEUR=$(printf '%s' "$REPONSE" | py -3 -c '
 import json
 import sys
 
 try:
     donnees = json.load(sys.stdin)
-    serveur = donnees["serveur"]
+    serveur = donnees["hote"]
     if not isinstance(serveur, str) or not serveur.strip():
         raise ValueError("Nom de serveur invalide")
     print(serveur)

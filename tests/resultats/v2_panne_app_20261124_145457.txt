@@ -1,0 +1,7 @@
+TEST V2 - PANNE D'UN SERVEUR APPLICATIF
+Date : 2026-11-24 14:54:57
+Serveur en panne : app1
+URL : http://127.0.0.1:8081
+Nombre de requêtes : 20
+
+app2 : 20 réponse(s)

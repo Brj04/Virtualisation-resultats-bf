@@ -89,11 +89,11 @@ for ((i = 1; i <= NB_REQUETES; i++)); do
         exit 1
     }
 
-    SERVEUR=$(python3 -c '
+    SERVEUR=$(py -3 -c '
 import json
 import sys
 try:
-    print(json.load(sys.stdin)["serveur"])
+    print(json.load(sys.stdin)["hote"])
 except (ValueError, KeyError, TypeError):
     sys.exit(1)
 ' <<< "$REPONSE") || {

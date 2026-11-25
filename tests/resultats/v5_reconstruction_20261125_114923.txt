@@ -1,0 +1,24 @@
+==========================================
+TEST V5 - RECONSTRUCTION DE L'INFRASTRUCTURE
+==========================================
+Date : 2026-11-25 11:49:23
+bdd1 attendu : principal (192.168.63.31)
+bdd2 attendu : replica (192.168.63.32)
+VIP : 192.168.63.5
+OK : bdd1 est operationnelle et principale.
+OK : bdd2 est operationnelle et en mode replica.
+OK : replication active de bdd1 vers bdd2 (verification pg_stat_replication).
+/sante : HTTP 200
+/resultat : HTTP 200
+OK : donnees JSON conformes.
+
+===== BILAN V5 =====
+bdd1 : principal confirme
+bdd2 : replica confirme
+Replication : streaming
+Destination WAL : 192.168.63.32
+/sante : HTTP 200
+/resultat : HTTP 200
+Donnees du candidat : conformes
+RESULTAT : SUCCES
+Preuve : /vagrant/tests/resultats/v5_reconstruction_20261125_114923.txt

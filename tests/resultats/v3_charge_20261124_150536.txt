@@ -1,0 +1,15 @@
+TEST V3 - TEST DE CHARGE
+Date : 2026-11-24 15:05:36
+URL : http://127.0.0.1:8081/info
+Requêtes prévues : 100
+Requêtes réussies : 100
+Requêtes échouées : 0
+Temps moyen (s) : 0.013
+Temps minimum (s) : 0.008
+Temps maximum (s) : 0.066
+Durée totale (ms) : 37710
+Débit des succès (req/s) : 2.65
+
+Répartition par serveur :
+app2 : 50 réponse(s)
+app1 : 50 réponse(s)

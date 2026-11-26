@@ -1,0 +1,28 @@
+[2026-11-25T07:05:57+00:00] ----------------------------------------
+[2026-11-25T07:05:57+00:00] TEST V6 - Phase : initial
+[2026-11-25T07:05:58+00:00] Machine de test : app1
+[2026-11-25T07:05:58+00:00] Adresse virtuelle testée : 192.168.63.5
+[2026-11-25T07:05:58+00:00] URL testée : http://192.168.63.5/sante
+[2026-11-25T07:05:58+00:00] Code HTTP obtenu sur /sante : 200
+[2026-11-25T07:05:58+00:00] RESULTAT : SUCCES - service accessible.
+[2026-11-25T07:05:58+00:00] Fin de la phase initial.
+[2026-11-25T07:05:58+00:00]
+[2026-11-25T07:10:10+00:00] ----------------------------------------
+[2026-11-25T07:10:10+00:00] TEST V6 - Phase : panne
+[2026-11-25T07:10:10+00:00] Machine de test : app1
+[2026-11-25T07:10:10+00:00] Adresse virtuelle testée : 192.168.63.5
+[2026-11-25T07:10:10+00:00] URL testée : http://192.168.63.5/sante
+[2026-11-25T07:10:10+00:00] Code HTTP obtenu sur /sante : 200
+[2026-11-25T07:10:10+00:00] RESULTAT : SUCCES - service accessible.
+[2026-11-25T07:10:10+00:00] Fin de la phase panne.
+[2026-11-25T07:10:10+00:00]
+[2026-11-25T07:19:05+00:00] ----------------------------------------
+[2026-11-25T07:19:05+00:00] TEST V6 - Phase : retour
+[2026-11-25T07:19:05+00:00] Machine de test : app1
+[2026-11-25T07:19:06+00:00] Adresse virtuelle testée : 192.168.63.5
+[2026-11-25T07:19:06+00:00] URL testée : http://192.168.63.5/sante
+[2026-11-25T07:19:06+00:00] Code HTTP obtenu sur /sante : 200
+[2026-11-25T07:19:06+00:00] RESULTAT : SUCCES - service accessible.
+[2026-11-25T07:19:06+00:00] Fin de la phase retour.
+[2026-11-25T07:19:06+00:00]
+[2026-11-25T07:19:06+00:00] Campagne V6 terminée. Preuve conservée dans : /vagrant/tests/resultats/v6_panne_lb_20261125_070557.txt

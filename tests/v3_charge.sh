@@ -88,6 +88,19 @@ fi
 
 DEBUT=$(date +%s%N)
 
+# Détection de Python sous Windows et Linux
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON_CMD="python3"
+elif command -v py >/dev/null 2>&1; then
+    PYTHON_CMD="py -3"
+elif command -v python >/dev/null 2>&1; then
+    PYTHON_CMD="python"
+else
+    echo "ERREUR : Python est introuvable." >&2
+    exit 1
+fi
+
+
 # ----------------------------------------------------------
 # 5. Exécution des requêtes
 # ----------------------------------------------------------
@@ -120,7 +133,7 @@ for ((i = 1; i <= NB_REQUETES; i++)); do
     fi
 
     # Extraction du nom du serveur depuis le JSON déjà reçu.
-    SERVEUR=$(printf '%s' "$REPONSE" | py -3 -c '
+    SERVEUR=$(printf '%s' "$REPONSE" | $PYTHON_CMD -c '
 import json
 import sys
 

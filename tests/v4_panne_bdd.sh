@@ -71,17 +71,31 @@ URL="http://${HOTE_TEST}:${PORT_TEST}"
 URL_SANTE="${URL}/sante"
 URL_RESULTAT="${URL}/resultat?matricule=BF000001"
 
+
+
+# ----------------------------------------------------------
 # ----------------------------------------------------------
 # 4. Vérification des outils
 # ----------------------------------------------------------
-for outil in curl awk date py; do
+
+for outil in curl awk date; do
     if ! command -v "$outil" >/dev/null 2>&1; then
         echo "ERREUR : outil requis absent : $outil" >&2
         exit 1
     fi
 done
 
-# ----------------------------------------------------------
+# Détection de Python sous Windows et Linux
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON_CMD="python3"
+elif command -v py >/dev/null 2>&1; then
+    PYTHON_CMD="py -3"
+elif command -v python >/dev/null 2>&1; then
+    PYTHON_CMD="python"
+else
+    echo "ERREUR : Python est introuvable." >&2
+    exit 1
+fi
 # 5. Fonction de récupération du code HTTP
 # ----------------------------------------------------------
 
@@ -112,7 +126,7 @@ obtenir_corps_resultat() {
 verifier_resultat() {
     local contenu="$1"
 
-    printf '%s' "$contenu" | py -3 -c '
+    printf '%s' "$contenu" | $PYTHON_CMD -c '
 import json
 import sys
 

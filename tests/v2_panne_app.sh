@@ -101,6 +101,18 @@ echo
 echo "Attente de 8 secondes pour la détection HAProxy..."
 sleep 8
 
+# Détection de Python sous Windows et Linux
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON_CMD="python3"
+elif command -v py >/dev/null 2>&1; then
+    PYTHON_CMD="py -3"
+elif command -v python >/dev/null 2>&1; then
+    PYTHON_CMD="python"
+else
+    echo "ERREUR : Python est introuvable." >&2
+    exit 1
+fi
+
 # ----------------------------------------------------------
 # 6. Envoi des requêtes
 # ----------------------------------------------------------
@@ -123,7 +135,7 @@ if [[ "$CODE_HTTP" != "200" ]]; then
     exit 1
 fi
 
-    SERVEUR=$(py -3 -c '
+    SERVEUR=$($PYTHON_CMD -c '
 import json
 import sys
 try:

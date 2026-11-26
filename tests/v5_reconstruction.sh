@@ -59,7 +59,7 @@ if [[ -z "$APP_DB_PASSWORD" || "$APP_DB_PASSWORD" == "changez_moi" ]]; then
     exit 1
 fi
 
-for outil in awk date curl python3 psql pg_isready pg_lsclusters runuser; do
+for outil in awk date curl python3 psql pg_isready runuser; do
     command -v "$outil" >/dev/null 2>&1 || {
         echo "ERREUR : outil requis absent : $outil" >&2
         exit 1
@@ -190,7 +190,7 @@ echo "===== BILAN V5 ====="
 echo "bdd1 : principal confirme"
 echo "bdd2 : replica confirme"
 echo "Replication : streaming"
-echo "Destination WAL : 192.168.63.32"
+echo "Destination WAL : $IP_BDD2"
 echo "/sante : HTTP $CODE_SANTE"
 echo "/resultat : HTTP $CODE_RESULTAT"
 echo "Donnees du candidat : conformes"

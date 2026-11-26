@@ -76,6 +76,18 @@ NB_REQUETES=20
 FICHIER_PREUVE=$(mktemp)
 trap 'rm -f "$FICHIER_PREUVE"' EXIT
 
+# Détection de Python sous Windows et Linux
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON_CMD="python3"
+elif command -v py >/dev/null 2>&1; then
+    PYTHON_CMD="py -3"
+elif command -v python >/dev/null 2>&1; then
+    PYTHON_CMD="python"
+else
+    echo "ERREUR : Python est introuvable." >&2
+    exit 1
+fi
+
 # ----------------------------------------------------------
 # 5. Envoi des requêtes
 # ----------------------------------------------------------
@@ -89,7 +101,7 @@ for ((i = 1; i <= NB_REQUETES; i++)); do
         exit 1
     }
 
-    SERVEUR=$(py -3 -c '
+    SERVEUR=$($PYTHON_CMD -c '
 import json
 import sys
 try:

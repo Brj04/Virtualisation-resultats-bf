@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 # RÉSULTATS-BF : V2 - Vérification de la tolérance à une panne applicative.
 # À exécuter depuis WSL après l'arrêt manuel d'un serveur app.

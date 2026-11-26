@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 # RÉSULTATS-BF : V3 - Test de charge HTTP.
 # À exécuter depuis WSL lorsque les VM et services sont opérationnels.

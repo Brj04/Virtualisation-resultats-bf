@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 # RÉSULTATS-BF : V4 - Vérification de la tolérance à une panne BDD.
 # Les opérations d'arrêt et de promotion sont réalisées manuellement.
@@ -165,7 +164,7 @@ except (json.JSONDecodeError, AttributeError) as erreur:
 
 mkdir -p "$DOSSIER_RESULTATS"
 
-FICHIER_PREUVE="$DOSSIER_RESULTATS/v4_panne_bdd_$(date +%Y%m%d_%H%M%S).txt"
+FICHIER_PREUVE="$DOSSIER_RESULTATS/v4_panne_bdd_$(date +%Y%m%d).txt"
 
 echo "=========================================="
 echo "TEST V4 - PANNE DU SERVEUR PRINCIPAL BDD"

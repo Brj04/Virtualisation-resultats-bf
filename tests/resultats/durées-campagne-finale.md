@@ -1,4 +1,4 @@
-﻿# Campagne finale (Windows, PowerShell, VirtualBox 7.2.20, Vagrant 2.4.9)
+# Campagne finale, poste de René (Arch Linux, VirtualBox 7.2, Vagrant 2.4.9)
 
 | Scénario | Résultat mesuré                                                                                                                              |
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
